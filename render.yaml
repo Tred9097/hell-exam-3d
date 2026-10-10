@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hell-exam-3d
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ENABLE_CLOUDFLARE_TUNNEL
+        value: "false"

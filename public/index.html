@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kì Thi Địa Ngục (Hell Exam) - 3D Vietnamese School Party Game v1.3</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Three.js (r128) & Loaders (Yêu cầu 1.9) -->
+  <script src="/js/three.min.js"></script>
+  <script src="/js/GLTFLoader.js"></script>
+  <script src="/js/SkeletonUtils.js"></script>
+  
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/style.css?v=2.5">
+</head>
+<body class="bg-slate-900 text-white overflow-hidden select-none">
+
+  <!-- 1. THREE.JS 3D CANVAS CONTAINER (HỖ TRỢ 1 CHẠM / RÊ CHUỘT XOAY CAMERA) -->
+  <div id="canvas3d-container"></div>
+
+  <!-- 2. THẺ KÌ THI ĐỊA NGỤC (NỀN TRONG SUỐT FLOATING Ở GÓC TRÊN TRÁI - GỌN GÀNG TRÊN MOBILE) -->
+  <div class="fixed top-2 sm:top-3 left-2 sm:left-3 z-30 flex items-center space-x-2 sm:space-x-3 p-1.5 sm:p-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-2xl glass-panel border border-white/15 shadow-xl max-w-[50vw] sm:max-w-none">
+    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center text-lg sm:text-2xl shadow-md shadow-rose-500/30 shrink-0">
+      🎓
+    </div>
+    <div class="truncate">
+      <h1 class="text-xs sm:text-base md:text-lg font-black text-yellow-400 tracking-wide text-stroke leading-tight truncate">
+        KÌ THI ĐỊA NGỤC
+      </h1>
+      <div class="flex items-center space-x-1.5 text-[10px] sm:text-xs text-slate-300 mt-0.5 truncate">
+        <span>Phòng: <strong id="header-room-code" class="text-emerald-400 font-mono">---</strong></span>
+        <span class="text-slate-500 hidden sm:inline">•</span>
+        <span class="hidden sm:inline">IP: <strong id="header-lan-ip" class="text-sky-400 font-mono">Đang quét...</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NÚT ĐIỀU KHIỂN GÓC TRÊN PHẢI: BẮT ĐẦU -> ĐỔI GÓC NHÌN -> CÀI ĐẶT -->
+  <div class="fixed top-2 sm:top-3 right-2 sm:right-3 z-30 flex items-center space-x-1 sm:space-x-2">
+    <!-- Nút Bắt Đầu (Không nhấp nháy, sáng đều đẹp mắt) -->
+    <button id="host-start-btn" class="hidden px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-emerald-500/30 transform active:scale-95 transition flex items-center space-x-1 sm:space-x-1.5 border border-emerald-400/40">
+      <span>🚀</span>
+      <span>BẮT ĐẦU</span>
+    </button>
+
+    <!-- Nút Đổi Góc Nhìn Camera (Nằm ở giữa nút Bắt Đầu và nút Cài Đặt) -->
+    <button id="btn-cycle-camera" class="p-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl glass-panel hover:bg-slate-800/90 border border-white/15 flex items-center space-x-1.5 text-xs sm:text-sm font-bold shadow-xl transition active:scale-95 text-sky-300" title="Chuyển đổi góc nhìn camera (Toàn cảnh, Bảng đen, Bàn của tôi, Góc nghiêng)">
+      <span class="text-base sm:text-lg">🎥</span>
+      <span class="hidden md:inline">GÓC NHÌN</span>
+    </button>
+
+    <!-- Nút Setting -->
+    <button id="btn-toggle-settings" class="p-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl glass-panel hover:bg-slate-800/90 border border-white/15 flex items-center space-x-1.5 text-xs sm:text-sm font-bold shadow-xl transition active:scale-95 text-yellow-300" title="Cài Đặt">
+      <span class="text-base sm:text-lg">⚙️</span>
+      <span class="hidden md:inline">CÀI ĐẶT</span>
+    </button>
+  </div>
+
+  <!-- 3. MÀN HÌNH KHỞI TẠO / SẢNH CHỜ (START MODAL) -->
+  <div id="start-screen-modal" class="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md">
+    <div class="w-full max-w-md p-4 sm:p-6 rounded-3xl glass-panel-gold text-center relative animate-fade-in shadow-2xl max-h-[95vh] overflow-y-auto">
+      <div class="inline-block p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-yellow-400 to-amber-600 text-3xl sm:text-4xl mb-1.5 shadow-lg">
+        🏫
+      </div>
+      <h2 class="text-xl sm:text-2xl font-black text-yellow-400 mb-0.5 text-stroke">KÌ THI ĐỊA NGỤC</h2>
+      <p class="text-xs text-slate-300 mb-3 sm:mb-4">Web Party Game</p>
+
+      <!-- Nhập tên học sinh -->
+      <div class="mb-2.5 sm:mb-3 text-left">
+        <label class="block text-xs font-bold text-slate-300 mb-1">TÊN SĨ TỬ (NICKNAME):</label>
+        <input id="input-player-name" type="text" maxlength="15" value="Học Sinh Gương Mẫu" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold focus:outline-none focus:border-yellow-400 transition text-sm">
+      </div>
+
+      <!-- 1. MODEL 3D NHÂN VẬT & NÚT CHỌN NHÂN VẬT (YÊU CẦU 2.0 & 2.2) -->
+      <div class="mb-3 text-center">
+        <!-- Khung xem trước 3D nhân vật (Yêu cầu 2.2: Không tự xoay, không mở modal khi chạm/kéo) -->
+        <div class="relative w-full h-44 sm:h-48 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-amber-500/30 overflow-hidden shadow-inner flex items-center justify-center select-none" id="start-preview-card-wrapper">
+          <div id="start-screen-3d-preview" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+        </div>
+
+        <!-- Nút chọn nhân vật mở Menu Đặc Biệt (Yêu cầu 2.1) -->
+        <button id="btn-open-wardrobe-modal" type="button" class="mt-2 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/25 to-amber-500/20 hover:from-amber-500/35 hover:to-yellow-500/35 border border-yellow-400/50 text-yellow-300 font-black text-xs flex items-center justify-center space-x-2 transition shadow-md active:scale-95 cursor-pointer">
+          <span>🎭</span>
+          <span>CHỌN NHÂN VẬT</span>
+          <span>➔</span>
+        </button>
+      </div>
+
+      <!-- Hai nút Tạo Phòng & Vào Phòng -->
+      <div class="space-y-2 mb-3">
+        <button id="btn-create-room" class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm shadow-lg shadow-yellow-500/25 active:scale-95 transition">
+          👑 TẠO PHÒNG MỚI (LÀM CHỦ PHÒNG)
+        </button>
+
+        <div class="flex items-center space-x-2">
+          <input id="input-room-code" type="text" maxlength="4" placeholder="MÃ PHÒNG (4 CHỮ)" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-yellow-400 font-mono font-black uppercase text-center focus:outline-none focus:border-yellow-400 text-sm">
+          <button id="btn-join-room" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 font-extrabold text-sm active:scale-95 transition">
+            VÀO PHÒNG
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner kết nối mạng LAN / Wi-Fi (Yêu cầu 1.8: Đọc địa chỉ PC máy chủ thực sự) -->
+        <!-- Banner kết nối Online toàn cầu (Cloudflare Tunnel - Khác mạng / 4G / Bất kỳ đâu) -->
+        <div id="online-tunnel-box" class="hidden mb-2 p-2 rounded-xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/40 text-left text-xs">
+          <div class="flex items-center justify-between text-emerald-300 mb-1">
+            <span class="flex items-center space-x-1 font-bold">
+              <span>🌐</span>
+              <span>Chơi Online (Khác mạng / 4G / Ở xa):</span>
+            </span>
+            <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-black border border-emerald-500/30">
+              HTTPS
+            </span>
+          </div>
+          <div class="flex items-center justify-between gap-1.5 bg-slate-950/80 p-1.5 rounded-lg border border-emerald-900/60">
+            <div class="truncate text-emerald-300 text-[11px] flex-1">
+              Link: <a id="online-server-url" href="#" target="_blank" class="text-emerald-400 font-mono underline font-bold tracking-tight">Đang kết nối...</a>
+            </div>
+            <button id="btn-copy-online-url" type="button" class="shrink-0 px-2 py-1 rounded-md bg-emerald-800/80 hover:bg-emerald-700 active:scale-95 text-white text-[10px] font-bold border border-emerald-600 flex items-center space-x-1 transition cursor-pointer" title="Sao chép link Online">
+              <span>📋</span>
+              <span>Sao chép</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner kết nối Wi-Fi / Hotspot nội bộ -->
+        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-left text-xs">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="flex items-center space-x-1 font-bold">
+              <span id="lan-connection-icon">📶</span>
+              <span id="lan-connection-label">Chơi chung Wi-Fi / Hotspot:</span>
+            </span>
+            <span id="server-pc-name-badge" class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
+              PC: Đang đọc...
+            </span>
+          </div>
+          <div class="flex items-center justify-between gap-1.5 bg-slate-950/70 p-1.5 rounded-lg border border-slate-800/80">
+            <div class="truncate text-slate-300 text-[11px] flex-1">
+              Link: <a id="lan-server-url" href="#" target="_blank" class="text-sky-400 font-mono underline font-bold tracking-tight">Đang đọc địa chỉ PC...</a>
+            </div>
+            <button id="btn-copy-lan-url" type="button" class="shrink-0 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 active:scale-95 text-yellow-400 text-[10px] font-bold border border-slate-700 flex items-center space-x-1 transition cursor-pointer" title="Sao chép link truy cập">
+              <span>📋</span>
+              <span>Sao chép</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. MODAL CÀI ĐẶT (SETTINGS MODAL - TÙY CHỌN ĐỔI TÊN, MÀU ÁO, MÀU MŨ, ÂM THANH, RỜI PHÒNG...) -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-sm p-4 sm:p-6 rounded-3xl glass-panel-gold text-center relative animate-fade-in shadow-2xl max-h-[92vh] overflow-y-auto">
+      <button id="btn-close-settings" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">✕</button>
+      <div class="text-3xl mb-1">⚙️</div>
+      <h3 class="text-xl font-black text-yellow-400 mb-3">CÀI ĐẶT PHÒNG THI</h3>
+
+      <div class="space-y-3 text-left">
+        <!-- Đổi tên -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">ĐỔI TÊN SĨ TỬ:</label>
+          <div class="flex items-center space-x-2">
+            <input id="settings-player-name" type="text" maxlength="15" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-yellow-400">
+            <button id="btn-save-settings-name" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs active:scale-95 transition">
+              LƯU
+            </button>
+          </div>
+        </div>
+
+        <!-- CHỌN TRANG PHỤC & MÀU DA (YÊU CẦU 2.1) -->
+        <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-700/80 text-center">
+          <button id="btn-settings-open-wardrobe" type="button" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-yellow-400/50 text-yellow-300 font-extrabold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 shadow-md cursor-pointer">
+            <span>🎭</span>
+            <span>CHỌN NHÂN VẬT</span>
+          </button>
+        </div>
+
+        <!-- Bật/tắt âm thanh -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">ÂM THANH TRƯỜNG HỌC:</label>
+          <button id="settings-sound-toggle-btn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold flex items-center justify-center space-x-2 transition">
+            <span id="settings-sound-icon">🔊</span>
+            <span id="settings-sound-text">Âm thanh: ĐANG BẬT</span>
+          </button>
+        </div>
+
+        <!-- Rời phòng -->
+        <div class="pt-2 border-t border-slate-700">
+          <button id="btn-leave-room" class="w-full py-2.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-extrabold text-xs active:scale-95 transition flex items-center justify-center space-x-1.5 shadow-lg shadow-rose-600/20">
+            <span>🚪</span>
+            <span>RỜI PHÒNG THI</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. MODAL ĐIỀU HÀNH CHỦ PHÒNG (HOST CONTROL MODAL - ĐÃ BỎ BOT) -->
+  <div id="host-control-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-sm p-5 sm:p-6 rounded-3xl glass-panel text-center relative animate-fade-in shadow-2xl border-2 border-emerald-500">
+      <button id="btn-close-host-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">✕</button>
+
+      <div class="text-3xl mb-2">🚀</div>
+      <h3 class="text-xl font-black text-emerald-400 mb-1">ĐIỀU HÀNH PHÒNG THI</h3>
+      <p class="text-xs text-slate-300 mb-4">Sẵn sàng mở kì thi khi lớp học có từ 2 thí sinh trở lên!</p>
+
+      <div class="space-y-2.5 mb-4">
+        <button id="btn-trigger-start" class="w-full py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-500/30 transition active:scale-95">
+          🔔 TIẾN HÀNH BÌNH CHỌN MÔN THI
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-400">
+        Số lượng thí sinh trong lớp: <span id="player-count-badge" class="text-yellow-400 font-bold">1/12</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. DANH SÁCH SĨ TỬ Ở SẢNH CHỜ (LOBBY OVERLAY) - CÓ THỂ THU GỌN / MỞ RỘNG TRÊN MOBILE -->
+  <div id="lobby-overlay" class="hidden fixed top-14 sm:top-20 right-2 sm:right-4 z-20 w-52 sm:w-64 p-2 sm:p-3 rounded-2xl glass-panel shadow-xl transition-all">
+    <div id="lobby-header-toggle" class="flex items-center justify-between cursor-pointer select-none">
+      <span class="text-xs font-bold text-yellow-400 flex items-center space-x-1">
+        <span>👥</span>
+        <span>LỚP HỌC</span>
+        <span id="lobby-count-chip" class="ml-1 px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 text-[10px] font-mono">1/12</span>
+      </span>
+      <button id="btn-toggle-lobby-expand" class="text-slate-400 hover:text-white text-xs px-1 font-bold">
+        <span id="lobby-arrow-icon">▾</span>
+      </button>
+    </div>
+    <div id="lobby-player-list-container" class="mt-2 space-y-1 max-h-40 sm:max-h-56 overflow-y-auto pr-1">
+      <div id="lobby-player-list" class="space-y-1.5"></div>
+    </div>
+  </div>
+
+  <!-- 7. GIAI ĐOẠN BÌNH CHỌN MÔN THI (VOTING OVERLAY - 3 MÔN THI) -->
+  <div id="voting-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
+    <div class="w-full max-w-2xl p-4 sm:p-6 rounded-3xl glass-panel text-center animate-fade-in shadow-2xl border border-yellow-400/40 max-h-[95vh] overflow-y-auto">
+      <div class="flex items-center justify-center space-x-2 mb-2">
+        <span class="text-2xl animate-spin">⏱️</span>
+        <span class="text-2xl sm:text-3xl font-black text-yellow-400 font-mono phase-timer-display">10s</span>
+      </div>
+      <h2 class="text-lg sm:text-2xl font-black text-white mb-1.5 text-stroke">BÌNH CHỌN BÀI THI KẾ TIẾP</h2>
+      <p class="text-xs text-slate-300 mb-4 sm:mb-5">Cả lớp hãy biểu quyết chọn thử thách cho vòng này!</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <!-- Môn 1: Vẽ tranh hội thảo 2.0 -->
+        <button id="btn-vote-drawing" class="p-3 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700 hover:border-yellow-400 text-left transition transform active:scale-95 relative overflow-hidden group">
+          <div class="flex items-center space-x-2.5 mb-2">
+            <span class="text-2xl p-2 rounded-xl bg-purple-500/20 text-purple-400">🎨</span>
+            <div>
+              <h3 class="font-extrabold text-white text-xs sm:text-sm">VẼ TRANH XOAY VÒNG</h3>
+              <span class="text-[11px] text-purple-300">Tự ra đề • 60s/lượt</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2 leading-relaxed">Mỗi bạn tự ra 1 đề. Cả lớp vẽ xoay vòng đề của nhau (60s). Triển lãm và chấm điểm!</p>
+          <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+            <div id="vote-bar-drawing" class="bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <span id="vote-count-drawing" class="block text-right text-[11px] font-mono text-purple-300 mt-1">0 phiếu</span>
+        </button>
+
+        <!-- Môn 2: Đại chiến nối từ -->
+        <button id="btn-vote-wordchain" class="p-3 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700 hover:border-yellow-400 text-left transition transform active:scale-95 relative overflow-hidden group">
+          <div class="flex items-center space-x-2.5 mb-2">
+            <span class="text-2xl p-2 rounded-xl bg-rose-500/20 text-rose-400">⚔️</span>
+            <div>
+              <h3 class="font-extrabold text-white text-xs sm:text-sm">ĐẠI CHIẾN NỐI TỪ</h3>
+              <span class="text-[11px] text-rose-300">Sinh tử 15s/lượt</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2 leading-relaxed">Đấu từ ghép 15s/lượt. Từ điển 48.600+ từ chuẩn. Bí từ là loại, Top 1 ẵm 10đ!</p>
+          <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+            <div id="vote-bar-wordchain" class="bg-rose-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <span id="vote-count-wordchain" class="block text-right text-[11px] font-mono text-rose-300 mt-1">0 phiếu</span>
+        </button>
+
+        <!-- Môn 3: Hỏi xoáy đáp xoay (MỚI 1.6) -->
+        <button id="btn-vote-spinqa" class="p-3 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700 hover:border-yellow-400 text-left transition transform active:scale-95 relative overflow-hidden group">
+          <div class="flex items-center space-x-2.5 mb-2">
+            <span class="text-2xl p-2 rounded-xl bg-amber-500/20 text-amber-400">🌀</span>
+            <div>
+              <h3 class="font-extrabold text-white text-xs sm:text-sm">HỎI XOÁY ĐÁP XOAY</h3>
+              <span class="text-[11px] text-amber-300">Thân phận • 120s</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2 leading-relaxed">1 người hỏi hóa thân Quỷ Satan/Bà Hàng Xóm, người đáp gài từ khóa và trả lời trong 120s!</p>
+          <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+            <div id="vote-bar-spinqa" class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <span id="vote-count-spinqa" class="block text-right text-[11px] font-mono text-amber-300 mt-1">0 phiếu</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8A. GIAI ĐOẠN NHẬP YÊU CẦU VẼ (DRAWING PROMPT INPUT OVERLAY - 30S) -->
+  <div id="drawing-prompt-input-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-lg p-5 sm:p-6 rounded-3xl glass-panel text-center animate-fade-in shadow-2xl border-2 border-purple-500">
+      <div class="flex items-center justify-center space-x-2 mb-2">
+        <span class="text-3xl animate-bounce">🎨</span>
+        <span class="text-2xl sm:text-3xl font-black text-yellow-400 font-mono phase-timer-display">30s</span>
+      </div>
+      <h2 class="text-lg sm:text-2xl font-black text-white mb-1.5 text-stroke">TỰ RA ĐỀ BÀI VẼ</h2>
+      <p class="text-xs text-slate-300 mb-4">Hãy nghĩ ra một đề thi vẽ thật độc đáo và hài hước để thách thức cả lớp!</p>
+
+      <div class="space-y-3 mb-4 text-left">
+        <div>
+          <label class="block text-xs font-bold text-purple-300 mb-1">NỘI DUNG YÊU CẦU VẼ:</label>
+          <input id="input-drawing-prompt" type="text" maxlength="60" placeholder="VD: Thầy giám thị nhảy hiphop, Con mèo lái xe buýt..." class="w-full px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-yellow-400 shadow-inner">
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="btn-submit-drawing-prompt" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm active:scale-95 transition shadow-lg shadow-purple-600/30">
+          GỬI ĐỀ VẼ 🚀
+        </button>
+      </div>
+
+      <div id="drawing-prompt-status-msg" class="text-xs text-emerald-400 font-bold mt-3 min-h-[16px]"></div>
+    </div>
+  </div>
+
+  <!-- 8B. GIAI ĐOẠN VẼ TRANH XOAY VÒNG (DRAWING OVERLAY - 60S/LƯỢT) -->
+  <div id="drawing-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-between p-2 sm:p-4 bg-black/40 backdrop-blur-sm pointer-events-none">
+    <div class="pointer-events-auto w-full max-w-xl p-2.5 sm:p-3 rounded-2xl glass-panel text-center shadow-xl border border-purple-500/50 mt-12 sm:mt-14">
+      <div class="flex items-center justify-between px-2">
+        <div class="flex items-center space-x-1.5">
+          <span class="px-2 py-0.5 rounded-full bg-purple-600/30 border border-purple-400/40 text-[11px] font-black text-purple-300 uppercase" id="drawing-round-badge">LƯỢT 1 / 2</span>
+          <span class="text-[11px] font-bold text-slate-300 hidden sm:inline" id="drawing-prompt-author-text">Đề của: ...</span>
+        </div>
+        <span class="text-base sm:text-lg font-black text-yellow-400 font-mono phase-timer-display" id="drawing-timer-display">60s</span>
+      </div>
+      <h3 id="drawing-prompt-text" class="text-sm sm:text-lg font-black text-yellow-300 mt-1">
+        "Thầy giám thị bắt phao thi"
+      </h3>
+      <div class="text-[11px] text-purple-200 sm:hidden mt-0.5" id="drawing-prompt-author-mobile">Đề của: ...</div>
+    </div>
+
+    <!-- Khung Canvas Vẽ Tranh Nâng Cấp (Yêu cầu 1.7) -->
+    <div class="pointer-events-auto p-2 sm:p-3 rounded-3xl glass-panel shadow-2xl border border-white/20 flex flex-col items-center my-auto max-w-[96vw]">
+      <canvas id="exam-drawing-canvas" width="720" height="480" class="rounded-xl sm:rounded-2xl border-2 sm:border-4 border-slate-700 shadow-inner w-[310px] xs:w-[370px] sm:w-[540px] md:w-[680px] max-w-[92vw] max-h-[46vh] sm:max-h-[55vh] aspect-[3/2] h-auto bg-white cursor-crosshair touch-none"></canvas>
+
+      <!-- Thanh công cụ vẽ tranh chuyên nghiệp -->
+      <div class="w-full flex flex-col mt-2 gap-1.5 sm:gap-2">
+        <!-- Hàng 1: Công cụ (Bút, Đổ màu, Tẩy, Hoàn tác, Xóa hết) & Nút Nộp Bài -->
+        <div class="w-full flex items-center justify-between gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
+          <div class="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto py-0.5">
+            <!-- Nút Bút vẽ -->
+            <button id="draw-tool-brush" class="draw-tool-btn px-2 sm:px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs active:scale-95 transition shadow flex items-center space-x-1" title="Bút vẽ tự do">
+              <span>✏️</span>
+              <span>Bút</span>
+            </button>
+            <!-- Nút Đổ màu (Fill Bucket) -->
+            <button id="draw-tool-bucket" class="draw-tool-btn px-2 sm:px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs border border-slate-600 active:scale-95 transition shadow flex items-center space-x-1" title="Đổ màu vùng vẽ (Flood Fill)">
+              <span>🪣</span>
+              <span class="hidden xs:inline">Đổ màu</span>
+            </button>
+            <!-- Nút Tẩy -->
+            <button id="draw-tool-eraser" class="draw-tool-btn px-2 sm:px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs border border-slate-600 active:scale-95 transition shadow flex items-center space-x-1" title="Tẩy xóa nét">
+              <span>🧹</span>
+              <span class="hidden xs:inline">Tẩy</span>
+            </button>
+            <!-- Nút Hoàn tác (Undo) -->
+            <button id="draw-undo-btn" class="px-2 sm:px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-yellow-300 font-black text-xs border border-slate-600 active:scale-95 transition shadow flex items-center space-x-1" title="Hoàn tác bước vẽ trước (Undo)">
+              <span>↩️</span>
+              <span class="hidden sm:inline">Hoàn tác</span>
+            </button>
+            <!-- Nút Xóa hết -->
+            <button id="draw-clear-btn" class="px-2 sm:px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-400 font-black text-xs border border-slate-600 active:scale-95 transition shadow flex items-center space-x-1" title="Xóa toàn bộ trang vẽ">
+              <span>🗑️</span>
+              <span class="hidden sm:inline">Xóa</span>
+            </button>
+          </div>
+
+          <!-- Nút Nộp Bài -->
+          <button id="draw-submit-btn" class="px-3.5 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-500/30 active:scale-95 transition flex items-center space-x-1 ml-auto">
+            <span>NỘP BÀI</span>
+            <span>📝</span>
+          </button>
+        </div>
+
+        <!-- Hàng 2: Bảng 16 màu + Color Picker + 4 Cỡ nét cọ + Slider -->
+        <div class="w-full flex items-center justify-between gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap pt-0.5 border-t border-slate-700/50">
+          <!-- Bảng 16 màu + Ô chọn màu tùy ý -->
+          <div class="flex items-center space-x-1 overflow-x-auto py-0.5 max-w-[calc(100vw-120px)] sm:max-w-none">
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black ring-4 ring-yellow-400 shrink-0" data-color="#000000" title="Đen"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-600 shrink-0" data-color="#475569" title="Xám than"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-300 border border-slate-400 shrink-0" data-color="#cbd5e1" title="Xám nhạt"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border border-slate-400 shrink-0" data-color="#ffffff" title="Trắng"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-900 shrink-0" data-color="#78350f" title="Nâu đất"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-600 shrink-0" data-color="#dc2626" title="Đỏ tươi"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-orange-600 shrink-0" data-color="#ea580c" title="Cam đậm"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-500 shrink-0" data-color="#f59e0b" title="Cam vàng"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-yellow-400 shrink-0" data-color="#facc15" title="Vàng tươi"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-lime-500 shrink-0" data-color="#84cc16" title="Xanh mạ"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-600 shrink-0" data-color="#16a34a" title="Xanh lá"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-700 shrink-0" data-color="#047857" title="Xanh lục"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-cyan-400 shrink-0" data-color="#06b6d4" title="Xanh lơ"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 shrink-0" data-color="#2563eb" title="Xanh dương"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-purple-600 shrink-0" data-color="#7c3aed" title="Tím"></button>
+            <button class="draw-color-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-pink-500 shrink-0" data-color="#ec4899" title="Hồng sen"></button>
+            
+            <!-- Ô màu tùy chọn -->
+            <label class="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden cursor-pointer border border-white/60 relative shrink-0 ml-1 flex items-center justify-center bg-gradient-to-tr from-rose-500 via-amber-400 to-sky-400" title="Chọn màu bất kỳ">
+              <input type="color" id="draw-custom-color" value="#2563eb" class="opacity-0 absolute inset-0 cursor-pointer w-full h-full">
+            </label>
+          </div>
+
+          <!-- Kích cỡ cọ nét vẽ (Presets + Slider) -->
+          <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0 ml-auto">
+            <button class="draw-size-btn px-1.5 py-0.5 rounded bg-slate-800 text-[10px] sm:text-xs font-bold hover:bg-slate-700 border border-slate-700 text-slate-300" data-size="3" title="Nét mảnh (3px)">3</button>
+            <button class="draw-size-btn px-1.5 py-0.5 rounded bg-slate-800 text-[10px] sm:text-xs font-bold hover:bg-slate-700 border border-slate-700 text-yellow-400 ring-1 ring-yellow-400" data-size="8" title="Nét vừa (8px)">8</button>
+            <button class="draw-size-btn px-1.5 py-0.5 rounded bg-slate-800 text-[10px] sm:text-xs font-bold hover:bg-slate-700 border border-slate-700 text-slate-300" data-size="16" title="Nét to (16px)">16</button>
+            <button class="draw-size-btn px-1.5 py-0.5 rounded bg-slate-800 text-[10px] sm:text-xs font-bold hover:bg-slate-700 border border-slate-700 text-slate-300 hidden xs:inline-block" data-size="28" title="Nét cực to (28px)">28</button>
+            <input id="draw-brush-size" type="range" min="2" max="36" value="8" class="w-14 sm:w-20 accent-yellow-400 cursor-pointer" title="Kéo để chỉnh cỡ nét">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. GIAI ĐOẠN CHẤM ĐIỂM BÀI VẼ (DRAWING REVIEW OVERLAY) -->
+  <div id="review-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-between p-3 sm:p-4 bg-black/40 backdrop-blur-sm pointer-events-none">
+    <div class="pointer-events-auto w-full max-w-md p-2.5 sm:p-3 rounded-2xl glass-panel text-center shadow-xl border border-yellow-400/50 mt-12 sm:mt-14">
+      <div class="flex items-center justify-between px-2">
+        <span id="review-progress" class="text-xs font-bold text-slate-300">Bài 1 / 4</span>
+        <span class="text-base font-black text-yellow-400 font-mono phase-timer-display">12s</span>
+      </div>
+      <div class="text-[11px] text-purple-300 font-bold mt-0.5" id="review-prompt-detail">
+        Đề bài: "..." (Ra đề: ...)
+      </div>
+      <h3 class="text-base sm:text-lg font-black text-white mt-1">
+        Họa sĩ: <span id="review-author-name" class="text-yellow-300">...</span>
+      </h3>
+    </div>
+
+    <!-- Khung hiển thị tác phẩm vẽ -->
+    <div class="pointer-events-auto p-2.5 sm:p-3 rounded-3xl glass-panel shadow-2xl border border-white/20 flex flex-col items-center my-auto max-w-[94vw]">
+      <img id="review-image-display" src="" alt="Tranh học sinh" class="rounded-xl sm:rounded-2xl border-2 sm:border-4 border-slate-700 shadow-inner w-[280px] xs:w-[320px] sm:w-[460px] aspect-[3/2] object-contain bg-white">
+      <div id="review-bot-drawing-text" class="hidden w-[280px] xs:w-[320px] sm:w-[460px] aspect-[3/2] rounded-xl sm:rounded-2xl bg-white border-2 sm:border-4 border-slate-700 flex items-center justify-center p-4 text-center text-slate-900 font-extrabold text-base sm:text-lg shadow-inner"></div>
+
+      <!-- Nút Chấm Điểm Tương Tác: Sao (2..10đ), Cà Chua (1đ), Trái Tim (10đ) -->
+      <div id="review-rating-controls" class="flex items-center space-x-1.5 sm:space-x-2 mt-3">
+        <div class="flex items-center space-x-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-700">
+          <button class="btn-rate-star px-2 py-1 rounded-xl hover:bg-slate-800 text-xs sm:text-sm font-bold text-yellow-400" data-stars="1">⭐ 2đ</button>
+          <button class="btn-rate-star px-2 py-1 rounded-xl hover:bg-slate-800 text-xs sm:text-sm font-bold text-yellow-400" data-stars="3">⭐ 6đ</button>
+          <button class="btn-rate-star px-2 py-1 rounded-xl hover:bg-slate-800 text-xs sm:text-sm font-bold text-yellow-400" data-stars="5">⭐ 10đ</button>
+        </div>
+
+        <button id="btn-rate-tomato" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-red-600 hover:bg-red-500 font-extrabold text-xs flex items-center space-x-1 active:scale-90 transition shadow-lg shadow-red-600/30" title="Chê bai: 1 điểm">
+          <span class="text-base sm:text-lg">🍅</span>
+          <span>1đ</span>
+        </button>
+
+        <button id="btn-rate-heart" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-pink-600 hover:bg-pink-500 font-extrabold text-xs flex items-center space-x-1 active:scale-90 transition shadow-lg shadow-pink-600/30" title="Tuyệt vời: 10 điểm">
+          <span class="text-base sm:text-lg">❤️</span>
+          <span>10đ</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9B. CÁC OVERLAYS CỦA BÀI THI: HỎI XOÁY ĐÁP XOAY (MỚI 1.6) -->
+  
+  <!-- MENU 1: SETUP VAI TRÒ & THÂN PHẬN & TỪ KHÓA (120s - Yêu cầu 1.8) -->
+  <div id="spinqa-setup-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-lg p-5 sm:p-6 rounded-3xl glass-panel text-center animate-fade-in shadow-2xl border-2 border-amber-500 max-h-[95vh] overflow-y-auto">
+      <div class="flex items-center justify-center space-x-2 mb-2">
+        <span class="text-3xl">🌀</span>
+        <span class="text-2xl sm:text-3xl font-black text-yellow-400 font-mono phase-timer-display" id="spinqa-setup-timer">120s</span>
+      </div>
+      <h2 class="text-xl sm:text-2xl font-black text-amber-400 text-stroke">HỎI XOÁY ĐÁP XOAY</h2>
+      
+      <!-- GIAO DIỆN NGƯỜI HỎI -->
+      <div id="spinqa-asker-setup-box" class="hidden mt-3 space-y-3 text-left">
+        <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center">
+          <span class="text-xs font-bold text-slate-300 block mb-1">THÂN PHẬN CỦA BẠN:</span>
+          <div id="spinqa-asker-persona-badge" class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-amber-500/20 text-yellow-300 font-black text-base sm:text-lg border border-yellow-400/40">
+            <span id="spinqa-persona-icon">😈</span>
+            <span id="spinqa-persona-title">Quỷ Satan</span>
+          </div>
+          <p id="spinqa-persona-desc" class="text-xs text-amber-200/80 mt-1 italic">"Chuyên bới móc tội lỗi và cám dỗ học đường"</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-amber-300 mb-1">ĐẶT CÂU HỎI HIỂM HÓC (XOÁY CẢ LỚP):</label>
+          <textarea id="spinqa-asker-question-input" rows="3" maxlength="120" placeholder="VD: Tại sao hôm qua bạn trốn tiết đi net? Bao giờ thì mới chịu trả tiền trà sữa?..." class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-yellow-400 shadow-inner resize-none"></textarea>
+        </div>
+
+        <button id="btn-submit-spinqa-question" class="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm active:scale-95 transition shadow-lg shadow-amber-500/30">
+          GỬI CÂU HỎI XOÁY 🎯
+        </button>
+        <div id="spinqa-asker-status-msg" class="text-center text-xs text-emerald-400 font-bold min-h-[16px]"></div>
+      </div>
+
+      <!-- GIAO DIỆN NGƯỜI ĐÁP (NHẬP TỪ KHÓA) -->
+      <div id="spinqa-responder-setup-box" class="hidden mt-3 space-y-3 text-left">
+        <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-700 text-center">
+          <span class="text-xs font-bold text-slate-300 block mb-0.5">VAI TRÒ CỦA BẠN:</span>
+          <span class="px-2.5 py-1 rounded-xl bg-sky-500/20 text-sky-300 font-black text-sm border border-sky-400/30">
+            🎙️ NGƯỜI ĐÁP (THÍ SINH BỊ CHẤT VẤN)
+          </span>
+          <p class="text-[11px] text-slate-400 mt-1.5">Hãy ghi 1 "Từ khóa" oái oăm để gài vào câu trả lời chung của cả lớp!</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-sky-300 mb-1">GHI TỪ KHÓA CỦA BẠN (1 - 3 TỪ):</label>
+          <input id="spinqa-keyword-input" type="text" maxlength="25" placeholder="VD: Thủng lốp, Tiền ăn sáng, Tỏ tình thất bại..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-yellow-300 font-bold text-sm focus:outline-none focus:border-yellow-400 shadow-inner">
+        </div>
+
+        <button id="btn-submit-spinqa-keyword" class="w-full py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-black text-sm active:scale-95 transition shadow-lg shadow-sky-500/30">
+          GỬI TỪ KHÓA 🏷️
+        </button>
+        <div id="spinqa-responder-status-msg" class="text-center text-xs text-emerald-400 font-bold min-h-[16px]"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU 2: ĐÁP XOAY (120 GIÂY) - NGƯỜI ĐÁP VIẾT CÂU TRẢ LỜI, NGƯỜI HỎI THEO DÕI -->
+  <div id="spinqa-answer-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-between p-3 sm:p-4 bg-black/50 backdrop-blur-sm pointer-events-none">
+    <!-- Header: Thân phận & Tên người hỏi, Câu hỏi, Đồng hồ 120s -->
+    <div class="pointer-events-auto w-full max-w-xl p-3 sm:p-4 rounded-3xl glass-panel text-center shadow-2xl border-2 border-amber-500 mt-10 sm:mt-12">
+      <div class="flex items-center justify-between px-2 mb-1.5">
+        <div class="flex items-center space-x-1.5">
+          <span id="spinqa-header-asker-badge" class="px-2.5 py-1 rounded-xl bg-amber-500/20 text-yellow-300 font-black text-xs sm:text-sm border border-yellow-400/40">
+            😈 Quỷ Satan: Huy nghiêm
+          </span>
+        </div>
+        <span class="text-lg sm:text-2xl font-black text-yellow-400 font-mono phase-timer-display" id="spinqa-answer-timer">120s</span>
+      </div>
+
+      <div class="p-2 sm:p-2.5 rounded-2xl bg-slate-950/80 border border-slate-700 mb-2">
+        <span class="text-[11px] text-amber-300 font-bold block mb-0.5">CÂU HỎI XOÁY:</span>
+        <h3 id="spinqa-header-question" class="text-sm sm:text-base font-extrabold text-white leading-snug">
+          "..."
+        </h3>
+      </div>
+
+      <!-- Danh sách từ khóa linh hoạt cho 1-12 người chơi (Yêu cầu 1.7) -->
+      <div class="mt-2 text-left">
+        <div class="flex items-center justify-between mb-1 px-1">
+          <span class="text-[11px] text-amber-300 font-bold flex items-center space-x-1">
+            <span>🏷️</span>
+            <span>TỪ KHÓA BẮT BUỘC GHÉP VÀO CÂU ĐÁP:</span>
+          </span>
+          <span id="spinqa-keywords-count-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-200 border border-purple-500/40 font-mono font-bold">0 từ khóa</span>
+        </div>
+        <div id="spinqa-keywords-container" class="flex flex-wrap items-center justify-center gap-1.5 max-h-24 sm:max-h-32 overflow-y-auto p-2 rounded-xl bg-slate-950/70 border border-purple-500/30">
+          <!-- Badges từ khóa co dãn tự do -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Khung trả lời dành cho Người Đáp -->
+    <div id="spinqa-responder-answer-box" class="pointer-events-auto w-full max-w-xl p-3 sm:p-4 rounded-3xl glass-panel-gold shadow-2xl mb-16 sm:mb-20 flex flex-col items-center">
+      <div class="w-full mb-2">
+        <div class="flex items-center justify-between text-xs font-bold text-slate-300 mb-1">
+          <span>LỜI ĐÁP TRẢ CỦA BẠN:</span>
+          <span class="text-[11px] text-yellow-300">Ghép càng nhiều từ khóa, điểm càng cao!</span>
+        </div>
+        <textarea id="spinqa-answer-input" rows="3" maxlength="200" placeholder="Viết câu biện hộ sắc bén, dí dỏm và ghép các từ khóa phía trên..." class="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-yellow-300 font-bold text-xs sm:text-sm focus:outline-none focus:border-yellow-400 shadow-inner resize-none"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between w-full">
+        <div id="spinqa-answer-status-msg" class="text-xs text-emerald-400 font-bold"></div>
+        <button id="btn-submit-spinqa-answer" class="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition shadow-lg shadow-amber-500/30">
+          NỘP CÂU ĐÁP 🎤
+        </button>
+      </div>
+    </div>
+
+    <!-- Màn hình theo dõi dành cho Người Hỏi -->
+    <div id="spinqa-asker-monitor-box" class="hidden pointer-events-auto w-full max-w-md p-4 rounded-3xl glass-panel shadow-2xl mb-16 sm:mb-20 text-center">
+      <div class="text-2xl mb-1 animate-pulse">👀</div>
+      <h4 class="text-sm font-black text-amber-300 mb-1">GIÁM SÁT TIẾN ĐỘ THI</h4>
+      <p class="text-xs text-slate-300 mb-3">Bạn đang là Người hỏi! Hãy đợi các thí sinh vắt óc suy nghĩ câu trả lời.</p>
+      <div id="spinqa-monitor-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <!-- MENU 3: CHẤM ĐIỂM HỎI XOÁY ĐÁP XOAY (SPIN QA REVIEW OVERLAY) -->
+  <div id="spinqa-review-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-between p-3 sm:p-4 bg-black/50 backdrop-blur-sm pointer-events-none">
+    <div class="pointer-events-auto w-full max-w-xl p-3 sm:p-4 rounded-3xl glass-panel text-center shadow-xl border border-amber-400/50 mt-10 sm:mt-12">
+      <div class="flex items-center justify-between px-2 mb-1">
+        <span id="spinqa-review-progress" class="text-xs font-bold text-slate-300">Câu 1 / 3</span>
+        <span class="text-base sm:text-lg font-black text-yellow-400 font-mono phase-timer-display" id="spinqa-review-timer">15s</span>
+      </div>
+
+      <!-- Thân phận + Câu hỏi đối chứng -->
+      <div class="p-2 sm:p-2.5 rounded-2xl bg-slate-950/80 border border-slate-700 text-left mb-1.5">
+        <div class="flex items-center space-x-1.5 mb-1">
+          <span id="spinqa-review-asker-name" class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold text-[11px] border border-amber-400/30">😈 Quỷ Satan</span>
+          <span class="text-[11px] text-slate-400">chất vấn:</span>
+        </div>
+        <div id="spinqa-review-question-text" class="text-xs sm:text-sm font-extrabold text-white leading-snug">
+          "..."
+        </div>
+      </div>
+
+      <!-- Từ khóa đối chứng linh hoạt -->
+      <div class="text-left mt-1.5">
+        <div class="flex items-center justify-between mb-1 px-1">
+          <span class="text-[10px] text-slate-300 font-bold flex items-center space-x-1">
+            <span>🏷️</span>
+            <span>Từ khóa đối chứng:</span>
+          </span>
+          <span id="spinqa-review-keywords-count" class="text-[10px] text-purple-300 font-mono"></span>
+        </div>
+        <div id="spinqa-review-keywords-box" class="flex flex-wrap items-center gap-1 max-h-16 sm:max-h-24 overflow-y-auto p-1.5 rounded-xl bg-slate-950/60 border border-slate-700"></div>
+      </div>
+    </div>
+
+    <!-- Khung hiển thị câu đáp của thí sinh -->
+    <div class="pointer-events-auto p-4 sm:p-5 rounded-3xl glass-panel-gold shadow-2xl border-2 border-yellow-400/60 flex flex-col items-center my-auto max-w-[94vw] w-full sm:max-w-lg text-center">
+      <div class="text-xs font-bold text-slate-300 mb-1">
+        THÍ SINH BỊ CHẤT VẤN: <span id="spinqa-review-author-name" class="text-yellow-300 text-sm font-black">...</span>
+      </div>
+
+      <div class="w-full my-3 p-4 rounded-2xl bg-slate-950/90 border border-slate-700 shadow-inner">
+        <p id="spinqa-review-answer-text" class="text-sm sm:text-base font-extrabold text-yellow-300 leading-relaxed italic">
+          "..."
+        </p>
+      </div>
+
+      <div class="text-[11px] text-amber-200/90 font-bold mb-2">
+        💡 Người hỏi được +2 điểm nếu bài đáp này dưới 8 điểm!
+      </div>
+
+      <!-- Nút Chấm Điểm Tương Tác: Sao (2..10đ), Cà Chua (1đ), Trái Tim (10đ) -->
+      <div id="spinqa-review-rating-controls" class="flex items-center space-x-1.5 sm:space-x-2">
+        <div class="flex items-center space-x-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-700">
+          <button class="btn-spinqa-star px-2 py-1 rounded-xl hover:bg-slate-800 text-xs sm:text-sm font-bold text-yellow-400" data-stars="1">⭐ 2đ</button>
+          <button class="btn-spinqa-star px-2 py-1 rounded-xl hover:bg-slate-800 text-xs sm:text-sm font-bold text-yellow-400" data-stars="3">⭐ 6đ</button>
+          <button class="btn-spinqa-star px-2 py-1 rounded-xl hover:bg-slate-800 text-xs sm:text-sm font-bold text-yellow-400" data-stars="5">⭐ 10đ</button>
+        </div>
+
+        <button id="btn-spinqa-tomato" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-red-600 hover:bg-red-500 font-extrabold text-xs flex items-center space-x-1 active:scale-90 transition shadow-lg shadow-red-600/30" title="Chê bai: 1 điểm">
+          <span class="text-base sm:text-lg">🍅</span>
+          <span>1đ</span>
+        </button>
+
+        <button id="btn-spinqa-heart" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-pink-600 hover:bg-pink-500 font-extrabold text-xs flex items-center space-x-1 active:scale-90 transition shadow-lg shadow-pink-600/30" title="Tuyệt vời: 10 điểm">
+          <span class="text-base sm:text-lg">❤️</span>
+          <span>10đ</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. GIAI ĐOẠN ĐẠI CHIẾN NỐI TỪ (WORD CHAIN OVERLAY) -->
+  <div id="wordchain-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-between p-3 sm:p-4 bg-black/35 backdrop-blur-[2px] pointer-events-none">
+    <div class="pointer-events-auto w-full max-w-lg p-3 sm:p-4 rounded-3xl glass-panel text-center shadow-2xl border-2 border-rose-500 mt-12 sm:mt-14">
+      <div class="text-[11px] sm:text-xs font-bold text-rose-300 uppercase tracking-widest mb-1">
+        ⚔️ ĐẠI CHIẾN NỐI TỪ (LOẠI TRỰC TIẾP)
+      </div>
+
+      <div class="my-1.5 sm:my-2 p-2 rounded-2xl bg-slate-950/80 border border-slate-700">
+        <span class="text-xs text-slate-400 block mb-0.5">TỪ CẦN NỐI:</span>
+        <span id="wc-current-word" class="text-xl sm:text-3xl font-black text-yellow-300 tracking-wider font-mono">
+          HỌC SINH
+        </span>
+      </div>
+
+      <div class="mt-1.5">
+        <div id="wc-turn-label" class="text-xs sm:text-sm font-bold text-white mb-1">
+          Đang đợi...
+        </div>
+        <div class="w-full bg-slate-900 rounded-full h-2.5 sm:h-3 overflow-hidden border border-slate-700 relative">
+          <div id="wc-turn-timer-bar" class="bg-emerald-500 h-2.5 sm:h-3 rounded-full transition-all duration-200" style="width: 100%"></div>
+          <span id="wc-turn-timer-text" class="absolute inset-0 flex items-center justify-center text-[10px] font-black font-mono text-white">15s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nhập từ khi đến lượt -->
+    <div id="wc-input-container" class="pointer-events-auto w-full max-w-md p-3 sm:p-4 rounded-3xl glass-panel-gold shadow-2xl mb-20 sm:mb-24 flex flex-col items-center">
+      <div id="wc-error-msg" class="text-rose-400 font-bold text-xs mb-1.5 min-h-[16px]"></div>
+      <div class="flex items-center space-x-2 w-full">
+        <input id="wc-word-input" type="text" placeholder="Nhập từ ghép 2 tiếng..." autocomplete="off" class="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl bg-slate-950 border border-slate-700 text-yellow-300 font-bold text-sm sm:text-base focus:outline-none focus:border-yellow-400">
+        <button id="wc-submit-btn" class="px-4 sm:px-5 py-2 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition">
+          NỘP TỪ
+        </button>
+      </div>
+    </div>
+
+    <!-- Lịch sử các từ đã nối gần nhất -->
+    <div class="pointer-events-auto fixed top-24 left-4 z-20 w-52 p-3 rounded-2xl glass-panel shadow-lg hidden md:block">
+      <div class="text-xs font-bold text-slate-400 mb-1.5">📜 LỊCH SỬ NỐI TỪ:</div>
+      <div id="wc-history-list" class="space-y-1 max-h-40 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <!-- 11. TỔNG KẾT VÒNG (ROUND SUMMARY OVERLAY) - TỰ ĐỘNG ĐÓNG SAU 3S HOẶC CHẠM ĐỂ ĐÓNG NGAY -->
+  <div id="summary-overlay" class="hidden fixed inset-0 z-30 flex flex-col items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md cursor-pointer select-none" title="Chạm bất kì đâu để đóng ngay">
+    <div class="w-full max-w-md p-4 sm:p-6 rounded-3xl glass-panel-gold text-center animate-fade-in shadow-2xl relative">
+      <div class="text-3xl sm:text-4xl mb-1 animate-bounce">🏆</div>
+      <h2 class="text-xl sm:text-2xl font-black text-yellow-400 text-stroke">KẾT QUẢ BÀI THI (1 - 10 ĐIỂM)</h2>
+      <p class="text-xs text-slate-300 mb-4 sm:mb-5">Điểm số bài thi vừa rồi cập nhật trên Bảng Đen 3D</p>
+
+      <div id="summary-leaderboard-list" class="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6"></div>
+
+      <div class="text-xs text-slate-400 flex flex-col items-center space-y-1">
+        <div>Tự động đóng sau: <span class="text-yellow-300 font-mono font-bold phase-timer-display">3s</span></div>
+        <div class="text-[11px] text-yellow-400/90 font-bold bg-slate-900/80 px-3 py-1 rounded-full border border-yellow-400/30 animate-pulse">👉 Chạm bất kì đâu để đóng ngay</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12. KHU VỰC GÓC DƯỚI BÊN PHẢI: KHUNG CHAT & HÀNG NÚT CẢM XÚC -->
+  <div class="fixed bottom-2 sm:bottom-3 right-2 sm:right-3 z-20 flex flex-col items-end space-y-1.5 sm:space-y-2 pointer-events-auto max-w-[calc(100vw-16px)] sm:max-w-sm">
+    
+    <!-- Khung Chat Thu Gọn / Mở Rộng -->
+    <div id="chat-container-collapsible" class="flex flex-col items-end space-y-1.5 transition-all">
+      <!-- Khung lịch sử tin nhắn -->
+      <div class="w-60 sm:w-80 rounded-2xl glass-panel shadow-xl border border-white/10 overflow-hidden">
+        <div class="flex items-center justify-between px-3 py-1.5 bg-slate-900/60 border-b border-white/10 text-[11px] font-bold text-slate-300">
+          <span class="flex items-center space-x-1">
+            <span>💬</span>
+            <span>CHAT LỚP HỌC</span>
+          </span>
+          <button id="btn-collapse-chat" class="text-slate-400 hover:text-white px-1 text-xs" title="Thu gọn chat">
+            ✕
+          </button>
+        </div>
+        <div id="chat-history-box" class="h-32 sm:h-44 p-2.5 overflow-y-auto space-y-1.5 text-xs sm:text-sm"></div>
+      </div>
+
+      <!-- Ô nhập tin nhắn -->
+      <div class="flex items-center space-x-1.5 w-60 sm:w-80">
+        <input id="chat-input-text" type="text" placeholder="Nói chuyện trong lớp..." maxlength="70" class="flex-1 px-3 py-1.5 sm:py-2 rounded-xl bg-slate-900/90 border border-slate-700 text-xs sm:text-sm text-white focus:outline-none focus:border-yellow-400 shadow-inner">
+        <button id="btn-send-chat" class="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-black active:scale-95 transition shadow-md shadow-blue-600/30">Gửi</button>
+      </div>
+    </div>
+
+    <!-- Hàng nút hành động dưới cùng -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2 pt-0.5">
+      <!-- Nút Mở / Thu gọn Chat -->
+      <button id="btn-toggle-chat-open" class="p-2 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl glass-panel hover:bg-slate-800 border border-white/15 text-xs sm:text-sm font-bold flex items-center space-x-1 active:scale-95 transition shadow-lg text-sky-300 relative" title="Mở / Đóng khung Chat">
+        <span class="text-sm sm:text-base">💬</span>
+        <span id="chat-unread-badge" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-slate-900 animate-pulse"></span>
+      </button>
+
+
+      <!-- Bộ nút cảm xúc -->
+      <div class="flex items-center space-x-0.5 sm:space-x-1 bg-slate-900/80 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-slate-700 backdrop-blur-md">
+        <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="🎉" title="Ăn mừng (3.5s)">🎉</button>
+        <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="😭" title="Khóc gục (3.5s)">😭</button>
+        <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="🙏" title="Cầu may (3.5s)">🙏</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. MODAL NÉM PHAO / BÚT CHỌN MỤC TIÊU -->
+  <div id="throw-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-xs p-5 rounded-3xl glass-panel text-center relative animate-fade-in shadow-2xl border border-orange-500/50">
+      <button id="btn-close-throw-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">✕</button>
+      <div class="text-3xl mb-1">🎯</div>
+      <h3 class="text-lg font-black text-orange-400 mb-1">CHỌN MỤC TIÊU NÉM</h3>
+      <p class="text-xs text-slate-300 mb-4">Ném máy bay phao thi hoặc bút bi 3D sang bàn bạn học!</p>
+      <div id="throw-target-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <!-- 14. MODAL THÔNG BÁO GIÁM THỊ TRƯỜNG HỌC -->
+  <div id="announcement-modal" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md p-4 rounded-2xl bg-gradient-to-r from-rose-900 to-red-800 border-2 border-yellow-400 shadow-2xl text-center animate-bounce">
+    <div id="announcement-title" class="text-xs font-black text-yellow-300 uppercase tracking-wider mb-0.5">LOA PHÁT THANH TRƯỜNG HỌC</div>
+    <div id="announcement-msg" class="text-sm font-bold text-white leading-snug">...</div>
+  </div>
+
+  <!-- 15. THÔNG BÁO TƯƠNG TÁC (INTERACTION PROMPT) & NÚT CẢM ỨNG DI ĐỘNG (YÊU CẦU 1.7) -->
+  <div id="interaction-prompt" class="hidden fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-2xl bg-slate-900/90 border-2 border-yellow-400 text-yellow-300 font-black text-xs sm:text-sm shadow-2xl backdrop-blur-md flex items-center space-x-2 animate-bounce cursor-pointer pointer-events-auto select-none">
+    <span class="text-base sm:text-lg">🪑</span>
+    <span id="interaction-prompt-text">[E] Ngồi vào ghế</span>
+  </div>
+
+  <!-- NÚT TƯƠNG TÁC CẢM ỨNG CHO ĐIỆN THOẠI -->
+  <button id="btn-touch-interact" class="hidden fixed bottom-20 right-4 z-40 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-black text-xs shadow-2xl border-2 border-yellow-300 flex items-center space-x-1.5 active:scale-95 transition pointer-events-auto select-none">
+    <span class="text-base" id="touch-interact-icon">🪑</span>
+    <span id="touch-interact-label">TƯƠNG TÁC</span>
+  </button>
+
+  <!-- VIRTUAL JOYSTICK CHO ĐIỆN THOẠI (GÓC DƯỚI BÊN TRÁI - YÊU CẦU 1.7 & 1.8) -->
+  <div id="virtual-joystick-container" class="hidden fixed bottom-4 left-4 z-40 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-900/50 border-2 border-white/20 backdrop-blur-sm pointer-events-auto select-none touch-none items-center justify-center">
+    <div id="virtual-joystick-knob" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-yellow-400 to-amber-500 shadow-xl border-2 border-yellow-200 pointer-events-none transform transition-transform duration-75"></div>
+  </div>
+
+  <!-- THANH HƯỚNG DẪN DI CHUYỂN BẰNG BÀN PHÍM PC / LAPTOP (SÁT GÓC TRÁI - YÊU CẦU 2.2) -->
+  <div id="pc-controls-hint" class="hidden fixed bottom-2 sm:bottom-3 left-2 sm:left-3 z-20 items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/80 border border-slate-700 text-[11px] text-slate-300 font-bold backdrop-blur-sm pointer-events-none">
+    <span>🎮 Phím</span>
+    <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600 text-yellow-400 font-mono text-xs">W</kbd>
+    <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600 text-yellow-400 font-mono text-xs">A</kbd>
+    <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600 text-yellow-400 font-mono text-xs">S</kbd>
+    <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600 text-yellow-400 font-mono text-xs">D</kbd>
+    <span>: Di chuyển</span>
+    <span class="text-slate-500">•</span>
+    <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600 text-yellow-400 font-mono text-xs">E</kbd>
+    <span>: Ngồi / Đứng</span>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL ĐẶC BIỆT CHỌN NHÂN VẬT & MÀU DA 3D (YÊU CẦU 2.0 & 2.2) -->
+  <!-- ====================================================================== -->
+  <div id="wardrobe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in pointer-events-auto">
+    <div class="w-full max-w-4xl max-h-[96vh] rounded-3xl glass-panel-gold border-2 border-yellow-500/60 shadow-2xl flex flex-col overflow-hidden">
+      
+      <!-- Header -->
+      <div class="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-amber-500/20 flex items-center justify-between shrink-0 bg-slate-950/70">
+        <div class="flex items-center space-x-2.5">
+          <span class="text-2xl sm:text-3xl">🎭</span>
+          <div class="text-left">
+            <h3 class="text-base sm:text-lg font-black text-yellow-400 tracking-wide">PHÒNG THAY ĐỒ & CHỌN NHÂN VẬT 3D</h3>
+            <p class="text-[11px] text-slate-300">Chọn diện mạo và tùy chỉnh màu da</p>
+          </div>
+        </div>
+        <button id="btn-wardrobe-close-x" class="text-slate-400 hover:text-white text-xl p-1.5 rounded-lg hover:bg-slate-800 transition">✕</button>
+      </div>
+
+      <!-- Main Content (2 Columns: Left 3D Preview & Skin Tone, Right Skin Grid) -->
+      <div class="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        <!-- CỘT TRÁI (LEFT PANEL: 5 cols): 3D Model Preview & Skin Tone Picker -->
+        <div class="md:col-span-5 flex flex-col space-y-3">
+          <!-- Viewport 3D Preview -->
+          <div class="relative w-full h-56 sm:h-72 rounded-2xl bg-gradient-to-b from-slate-900/95 to-slate-950 border border-amber-500/40 overflow-hidden shadow-2xl flex items-center justify-center">
+            <div id="wardrobe-3d-viewport" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+          </div>
+
+          <!-- TÙY CHỌN CHỌN MÀU DA NHÂN VẬT (YÊU CẦU 2.2: Bỏ giới thiệu text) -->
+          <div class="p-3 rounded-2xl bg-slate-950/85 border border-slate-800 text-left">
+            <div class="mb-2">
+              <label class="block text-xs font-bold text-slate-300">MÀU DA NHÂN VẬT:</label>
+            </div>
+            <!-- Palette các nút màu da -->
+            <div id="wardrobe-skin-tones-palette" class="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              <!-- Render động bởi game.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- CỘT PHẢI (RIGHT PANEL: 7 cols): Danh sách Model 3D Quaternius (Yêu cầu 2.3: Scroll mượt mà, thấy rõ đầu và thân) -->
+        <div class="md:col-span-7 flex flex-col min-h-0 space-y-2">
+          <!-- Lưới 52 Model Nhân vật 3D (4 cột - Yêu cầu 2.3) -->
+          <div id="wardrobe-skins-grid" class="grid grid-cols-4 gap-2 sm:gap-3 p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 overflow-y-auto h-[380px] sm:h-[420px] max-h-[58vh] scrollbar-thin">
+            <!-- Render động bởi game.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- DƯỚI CÙNG (BOTTOM ACTION BAR: NÚT LƯU & HỦY - YÊU CẦU 2.0) -->
+      <div class="px-4 py-3 sm:px-6 sm:py-3.5 border-t border-amber-500/20 bg-slate-950/95 flex items-center justify-end space-x-3 shrink-0">
+        <button id="btn-wardrobe-cancel" type="button" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs active:scale-95 transition border border-slate-700 cursor-pointer">
+          ✕ HỦY BỎ
+        </button>
+        <button id="btn-wardrobe-save" type="button" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs active:scale-95 transition shadow-lg shadow-yellow-500/25 cursor-pointer">
+          💾 LƯU LỰA CHỌN
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="/js/audio.js?v=2.5"></script>
+  <script src="/js/characters.js?v=2.5"></script>
+  <script src="/js/scene3d.js?v=2.5"></script>
+  <script src="/js/game.js?v=2.5"></script>
+</body>
+</html>

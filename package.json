@@ -1,0 +1,27 @@
+{
+  "name": "hell-exam-3d",
+  "version": "1.0.0",
+  "description": "Kì Thi Địa Ngục (Hell Exam) - Web 3D Vietnamese School Party Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "threejs",
+    "multiplayer",
+    "party-game",
+    "socketio",
+    "vietnamese-game"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.8.2",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}
