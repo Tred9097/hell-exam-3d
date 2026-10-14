@@ -742,6 +742,17 @@ class StudentCharacter {
       this.mixer.stopAllAction();
       this.mixer = null;
     }
+    if (this.group) {
+      this.group.traverse(child => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m && m.dispose && m.dispose());
+          } else if (child.material.dispose) {
+            child.material.dispose();
+          }
+        }
+      });
+    }
     if (this.group.parent) {
       this.group.parent.remove(this.group);
     }

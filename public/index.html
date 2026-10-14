@@ -681,12 +681,18 @@
     <div id="chat-container-collapsible" class="flex flex-col items-end space-y-1.5 transition-all">
       <!-- Khung lịch sử tin nhắn -->
       <div class="w-60 sm:w-80 rounded-2xl glass-panel shadow-xl border border-white/10 overflow-hidden">
-        <div class="flex items-center justify-between px-3 py-1.5 bg-slate-900/60 border-b border-white/10 text-[11px] font-bold text-slate-300">
-          <span class="flex items-center space-x-1">
-            <span>💬</span>
-            <span>CHAT LỚP HỌC</span>
-          </span>
-          <button id="btn-collapse-chat" class="text-slate-400 hover:text-white px-1 text-xs" title="Thu gọn chat">
+        <div class="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/80 border-b border-white/10 text-[11px] font-bold text-slate-300">
+          <div class="flex items-center space-x-1">
+            <button id="chat-tab-messages" type="button" class="px-2 py-0.5 rounded-lg bg-blue-600 text-white font-black text-[11px] transition flex items-center space-x-1 relative cursor-pointer">
+              <span>💬 Trò chuyện</span>
+              <span id="chat-tab-messages-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            </button>
+            <button id="chat-tab-system" type="button" class="px-2 py-0.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white font-bold text-[11px] transition flex items-center space-x-1 relative cursor-pointer">
+              <span>🔔 Hệ thống</span>
+              <span id="chat-tab-system-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            </button>
+          </div>
+          <button id="btn-collapse-chat" class="text-slate-400 hover:text-white px-1.5 text-xs cursor-pointer" title="Thu gọn chat">
             ✕
           </button>
         </div>
@@ -741,10 +747,10 @@
     <span id="interaction-prompt-text">[E] Ngồi vào ghế</span>
   </div>
 
-  <!-- NÚT TƯƠNG TÁC CẢM ỨNG CHO ĐIỆN THOẠI -->
-  <button id="btn-touch-interact" class="hidden fixed bottom-20 right-4 z-40 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-black text-xs shadow-2xl border-2 border-yellow-300 flex items-center space-x-1.5 active:scale-95 transition pointer-events-auto select-none">
+  <!-- NÚT TƯƠNG TÁC CẢM ỨNG CHO ĐIỆN THOẠI (YÊU CẦU 2.7) -->
+  <button id="btn-touch-interact" class="hidden fixed bottom-28 sm:bottom-32 right-3 sm:right-4 z-50 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-black text-xs shadow-2xl border-2 border-yellow-300 flex items-center space-x-1.5 active:scale-95 transition pointer-events-auto select-none cursor-pointer">
     <span class="text-base" id="touch-interact-icon">🪑</span>
-    <span id="touch-interact-label">TƯƠNG TÁC</span>
+    <span id="touch-interact-label">NGỒI XUỐNG</span>
   </button>
 
   <!-- VIRTUAL JOYSTICK CHO ĐIỆN THOẠI (GÓC DƯỚI BÊN TRÁI - YÊU CẦU 1.7 & 1.8) -->

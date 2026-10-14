@@ -38,6 +38,7 @@ class SchoolScene3D {
     this.lastUserDragTime = 0;
     this.currentPresetIndex = 0;
     this.cameraMode = 'OVERVIEW';
+    this.isLobby = true;
 
     // Di chuyển và tương tác sảnh chờ (Yêu cầu 1.7)
     this.seatSpots = [];
@@ -49,6 +50,11 @@ class SchoolScene3D {
     this.onMyMoveCallback = null;
     this.onSeatInteracted = null;
     this.lastMoveEmitTime = 0;
+
+    // Shared geometries để tái sử dụng và tránh memory leak
+    this.sharedFlashGeo = new THREE.SphereGeometry(0.35, 12, 12);
+    this.sharedRingGeo = new THREE.RingGeometry(0.1, 0.35, 20);
+    this.sharedShardGeo = new THREE.BoxGeometry(0.09, 0.09, 0.09);
 
     this.initThree();
     this.setupCameraTouchDrag();
@@ -773,40 +779,37 @@ class SchoolScene3D {
     explosionGroup.position.copy(pos);
     this.scene.add(explosionGroup);
 
-    // 1. Quả cầu lửa chớp sáng bung rộng
-    const flashGeo = new THREE.SphereGeometry(0.35, 14, 14);
+    // 1. Quả cầu lửa chớp sáng bung rộng (dùng shared geometry tối ưu bộ nhớ)
     const flashMat = new THREE.MeshBasicMaterial({
       color: 0xffaa00,
       transparent: true,
       opacity: 1.0,
       blending: THREE.AdditiveBlending
     });
-    const flashMesh = new THREE.Mesh(flashGeo, flashMat);
+    const flashMesh = new THREE.Mesh(this.sharedFlashGeo, flashMat);
     explosionGroup.add(flashMesh);
 
-    // 2. Vòng sóng xung kích lan nhanh trên sàn
-    const ringGeo = new THREE.RingGeometry(0.1, 0.35, 24);
+    // 2. Vòng sóng xung kích lan nhanh trên sàn (dùng shared geometry)
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0xff3300,
       transparent: true,
       opacity: 0.9,
       side: THREE.DoubleSide
     });
-    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    const ringMesh = new THREE.Mesh(this.sharedRingGeo, ringMat);
     ringMesh.rotation.x = -Math.PI / 2;
     ringMesh.position.y = -pos.y + 0.04;
     explosionGroup.add(ringMesh);
 
-    // 3. Mảnh vỡ nổ tung và tia lửa đỏ/vàng/khói
+    // 3. Mảnh vỡ nổ tung và tia lửa đỏ/vàng/khói (dùng shared geometry)
     const particleCount = 28;
     const particles = [];
-    const shardGeo = new THREE.BoxGeometry(0.09, 0.09, 0.09);
     const colors = [0xff2200, 0xff7700, 0xffcc00, 0x333333, 0xffffff];
 
     for (let i = 0; i < particleCount; i++) {
       const col = colors[Math.floor(Math.random() * colors.length)];
       const shardMat = new THREE.MeshBasicMaterial({ color: col });
-      const shard = new THREE.Mesh(shardGeo, shardMat);
+      const shard = new THREE.Mesh(this.sharedShardGeo, shardMat);
       
       const angle = Math.random() * Math.PI * 2;
       const speed = 3.5 + Math.random() * 4.5;
@@ -892,6 +895,35 @@ class SchoolScene3D {
     });
   }
 
+  setIsLobby(isLobby) {
+    this.isLobby = !!isLobby;
+    if (!this.isLobby) {
+      this.nearbyAction = null;
+      this.nearbySeat = null;
+      if (this.onInteractionPromptChange) {
+        this.onInteractionPromptChange(null);
+      }
+    }
+  }
+
+  disposeHierarchy(node) {
+    if (!node) return;
+    node.traverse(child => {
+      if (child.isMesh) {
+        if (child.geometry && child.geometry !== this.sharedFlashGeo && child.geometry !== this.sharedRingGeo && child.geometry !== this.sharedShardGeo) {
+          child.geometry.dispose();
+        }
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m && m.dispose && m.dispose());
+          } else if (child.material.dispose) {
+            child.material.dispose();
+          }
+        }
+      }
+    });
+  }
+
   setMyPlayerId(id) {
     this.myPlayerId = id;
   }
@@ -906,8 +938,11 @@ class SchoolScene3D {
     const myChar = this.characters.get(this.myPlayerId);
     if (!myChar) return;
 
-    // Chỉ cho phép di chuyển ở sảnh chờ LOBBY (cameraMode === 'OVERVIEW')
-    if (this.cameraMode !== 'OVERVIEW') return;
+    // Không cho phép di chuyển khi không ở sảnh chờ LOBBY (ví dụ khi đang thi mini-game)
+    if (!this.isLobby) {
+      if (myChar.isMoving) myChar.isMoving = false;
+      return;
+    }
 
     const mx = this.moveInput.x;
     const mz = this.moveInput.z;
@@ -916,7 +951,13 @@ class SchoolScene3D {
     if (isMoving) {
       if (myChar.isSitting) {
         myChar.setSitting(false);
+        this.cameraMode = 'STAND_FOLLOW';
+        this.standingCameraIndex = 0;
         if (this.onSeatInteracted) this.onSeatInteracted(false, null);
+      } else if (this.cameraMode === 'BLACKBOARD') {
+        // Tự động chuyển về góc nhìn theo sau nhân vật khi đang đứng và bắt đầu di chuyển
+        this.cameraMode = 'STAND_FOLLOW';
+        this.standingCameraIndex = 0;
       }
 
       myChar.isMoving = true;
@@ -979,9 +1020,9 @@ class SchoolScene3D {
       return;
     }
 
-    // Đang đứng: Tìm ghế gần nhất trong tầm 1.25m
+    // Đang đứng: Tìm ghế gần nhất trong tầm 1.8m (thoải mái, nhạy trên mobile)
     let closestSeat = null;
-    let minDist = 1.25;
+    let minDist = 1.8;
 
     for (const seat of this.seatSpots) {
       const dx = myChar.group.position.x - seat.pos.x;
@@ -1242,6 +1283,7 @@ class SchoolScene3D {
       p.progress += delta / p.duration;
 
       if (p.progress >= 1.0) {
+        this.disposeHierarchy(p.group);
         this.scene.remove(p.group);
         this.projectiles.splice(i, 1);
         if (window.audioMgr) window.audioMgr.playDeskTap();
@@ -1280,6 +1322,7 @@ class SchoolScene3D {
       const t = exp.elapsed / exp.duration;
 
       if (t >= 1.0) {
+        this.disposeHierarchy(exp.group);
         this.scene.remove(exp.group);
         this.explosions.splice(i, 1);
       } else {

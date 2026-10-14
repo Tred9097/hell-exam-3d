@@ -224,7 +224,12 @@ function initSocket() {
     document.getElementById('summary-overlay')?.classList.add('hidden');
     document.getElementById('lobby-overlay')?.classList.remove('hidden');
     resetExamClientState();
-    if (scene3d) scene3d.setCameraMode('OVERVIEW');
+    if (scene3d) {
+      scene3d.setIsLobby(true);
+      scene3d.setCameraMode('OVERVIEW');
+      const myChar = scene3d.characters.get(myPlayerId);
+      if (myChar) scene3d.checkSeatInteraction(myChar);
+    }
   });
 
   // --- SỰ KIỆN NỐI TỪ (WORD CHAIN) ---
@@ -683,6 +688,7 @@ function initDrawingCanvas() {
 function updateUIWithRoomState(room) {
   // Đồng bộ người chơi vào 3D
   if (scene3d) {
+    scene3d.setIsLobby(room.state === 'LOBBY');
     scene3d.syncPlayers(room.players);
   }
 
@@ -717,7 +723,12 @@ function updateUIWithRoomState(room) {
   switch (room.state) {
     case 'LOBBY':
       document.getElementById('lobby-overlay')?.classList.remove('hidden');
-      if (scene3d) scene3d.setCameraMode('OVERVIEW');
+      if (scene3d) {
+        scene3d.setIsLobby(true);
+        scene3d.setCameraMode('OVERVIEW');
+        const myChar = scene3d.characters.get(myPlayerId);
+        if (myChar) scene3d.checkSeatInteraction(myChar);
+      }
       break;
 
     case 'VOTING':
@@ -1302,7 +1313,7 @@ function bindUIEvents() {
 
     socket.emit('create_room', { playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, characterType: selectedSkinId }, (res) => {
       if (res.success) {
-        showToast(`Tạo phòng thành công! Mã phòng: ${res.roomCode}`);
+        addChatMessage('📢 HỆ THỐNG', `Tạo phòng thành công! Mã phòng: ${res.roomCode}`, false, 'system');
         document.getElementById('start-screen-modal')?.classList.add('hidden');
         document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
@@ -1323,7 +1334,7 @@ function bindUIEvents() {
 
     socket.emit('join_room', { roomCode: code, playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, characterType: selectedSkinId }, (res) => {
       if (res.success) {
-        showToast(`Đã vào phòng ${res.roomCode}!`);
+        addChatMessage('📢 HỆ THỐNG', `Đã vào phòng ${res.roomCode}!`, false, 'system');
         document.getElementById('start-screen-modal')?.classList.add('hidden');
         document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
@@ -1566,6 +1577,9 @@ function bindUIEvents() {
     const input = document.getElementById('chat-input-text');
     const msg = input?.value.trim();
     if (msg) {
+      if (activeChatTab !== 'messages') {
+        switchChatTab('messages');
+      }
       socket.emit('send_chat', { message: msg });
       input.value = '';
     }
@@ -1575,6 +1589,10 @@ function bindUIEvents() {
   document.getElementById('chat-input-text')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendChat();
   });
+
+  // Sự kiện chuyển tab phân loại chat (Trò chuyện & Hệ thống - Yêu cầu 2.7)
+  document.getElementById('chat-tab-messages')?.addEventListener('click', () => switchChatTab('messages'));
+  document.getElementById('chat-tab-system')?.addEventListener('click', () => switchChatTab('system'));
 
   // 12. Cài Đặt (Settings Modal)
   const settingsModal = document.getElementById('settings-modal');
@@ -1940,15 +1958,89 @@ function showAnnouncementModal(title, msg) {
   addChatMessage(header, msg);
 }
 
-function addChatMessage(name, text, isSelf) {
+// --- QUẢN LÝ CHAT LỚP HỌC THEO TAB (YÊU CẦU 2.7) ---
+let activeChatTab = 'messages'; // 'messages' | 'system'
+const chatHistoryList = [];
+
+function renderChatHistory() {
   const box = document.getElementById('chat-history-box');
   if (!box) return;
+  box.innerHTML = '';
 
-  const row = document.createElement('div');
-  row.className = `p-1.5 rounded-lg text-xs leading-tight ${isSelf ? 'bg-blue-900/60 text-blue-200 ml-3' : 'bg-slate-800/80 text-white mr-3'}`;
-  row.innerHTML = `<span class="font-bold text-yellow-400">${name}:</span> ${text}`;
-  box.appendChild(row);
+  const filtered = chatHistoryList.filter(msg => msg.category === activeChatTab);
+  filtered.forEach(item => {
+    const row = document.createElement('div');
+    if (item.category === 'system') {
+      row.className = 'p-1.5 rounded-lg text-xs leading-tight bg-amber-950/40 border border-amber-500/30 text-amber-200';
+      row.innerHTML = `<span class="font-bold text-yellow-300">${item.name}:</span> ${item.text}`;
+    } else {
+      row.className = `p-1.5 rounded-lg text-xs leading-tight ${item.isSelf ? 'bg-blue-900/60 text-blue-200 ml-3' : 'bg-slate-800/80 text-white mr-3'}`;
+      row.innerHTML = `<span class="font-bold text-yellow-400">${item.name}:</span> ${item.text}`;
+    }
+    box.appendChild(row);
+  });
   box.scrollTop = box.scrollHeight;
+}
+
+function switchChatTab(tab) {
+  activeChatTab = tab;
+  const tabMsgBtn = document.getElementById('chat-tab-messages');
+  const tabSysBtn = document.getElementById('chat-tab-system');
+  const dotMsg = document.getElementById('chat-tab-messages-dot');
+  const dotSys = document.getElementById('chat-tab-system-dot');
+
+  if (tab === 'messages') {
+    if (tabMsgBtn) {
+      tabMsgBtn.className = 'px-2 py-0.5 rounded-lg bg-blue-600 text-white font-black text-[11px] transition flex items-center space-x-1 relative cursor-pointer';
+    }
+    if (tabSysBtn) {
+      tabSysBtn.className = 'px-2 py-0.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white font-bold text-[11px] transition flex items-center space-x-1 relative cursor-pointer';
+    }
+    if (dotMsg) dotMsg.classList.add('hidden');
+  } else {
+    if (tabSysBtn) {
+      tabSysBtn.className = 'px-2 py-0.5 rounded-lg bg-amber-600 text-white font-black text-[11px] transition flex items-center space-x-1 relative cursor-pointer';
+    }
+    if (tabMsgBtn) {
+      tabMsgBtn.className = 'px-2 py-0.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white font-bold text-[11px] transition flex items-center space-x-1 relative cursor-pointer';
+    }
+    if (dotSys) dotSys.classList.add('hidden');
+  }
+
+  renderChatHistory();
+}
+
+function addChatMessage(name, text, isSelf = false, category = null) {
+  if (!category) {
+    const isSys = name.includes('HỆ THỐNG') || name.includes('THÔNG BÁO') || name.includes('GIÁM THỊ') ||
+                  name.includes('📢') || name.includes('🔔') || name.includes('💥') ||
+                  name.includes('🏆') || name.includes('✨') || name.includes('🎯');
+    category = isSys ? 'system' : 'messages';
+  }
+
+  const msgItem = { name, text, isSelf, category, time: Date.now() };
+  chatHistoryList.push(msgItem);
+
+  const box = document.getElementById('chat-history-box');
+  if (box && category === activeChatTab) {
+    const row = document.createElement('div');
+    if (category === 'system') {
+      row.className = 'p-1.5 rounded-lg text-xs leading-tight bg-amber-950/40 border border-amber-500/30 text-amber-200';
+      row.innerHTML = `<span class="font-bold text-yellow-300">${name}:</span> ${text}`;
+    } else {
+      row.className = `p-1.5 rounded-lg text-xs leading-tight ${isSelf ? 'bg-blue-900/60 text-blue-200 ml-3' : 'bg-slate-800/80 text-white mr-3'}`;
+      row.innerHTML = `<span class="font-bold text-yellow-400">${name}:</span> ${text}`;
+    }
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+  } else {
+    // Thông báo có tin mới ở tab chưa mở
+    if (category === 'system') {
+      document.getElementById('chat-tab-system-dot')?.classList.remove('hidden');
+    } else {
+      document.getElementById('chat-tab-messages-dot')?.classList.remove('hidden');
+    }
+  }
 
   // Hiển thị chấm đỏ thông báo nếu khung chat đang thu gọn
   const chatCollapsible = document.getElementById('chat-container-collapsible');
@@ -1958,13 +2050,13 @@ function addChatMessage(name, text, isSelf) {
   }
 }
 
-// --- PHÁT HIỆN THIẾT BỊ DI ĐỘNG HAY PC / LAPTOP (YÊU CẦU 1.8) ---
+// --- PHÁT HIỆN THIẾT BỊ DI ĐỘNG HAY PC / LAPTOP (YÊU CẦU 1.8 & 2.7) ---
 function isMobileOrTouchDevice() {
   const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
   const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  const isSmallScreen = window.innerWidth <= 768;
-  return isMobileUA || (hasTouch && (isCoarsePointer || isSmallScreen));
+  const isSmallScreen = window.innerWidth <= 1024;
+  return isMobileUA || hasTouch || (isCoarsePointer && isSmallScreen);
 }
 
 function applyDeviceControlsVisibility() {
