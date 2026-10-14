@@ -35,8 +35,6 @@
       </h1>
       <div class="flex items-center space-x-1.5 text-[10px] sm:text-xs text-slate-300 mt-0.5 truncate">
         <span>Phòng: <strong id="header-room-code" class="text-emerald-400 font-mono">---</strong></span>
-        <span class="text-slate-500 hidden sm:inline">•</span>
-        <span class="hidden sm:inline">IP: <strong id="header-lan-ip" class="text-sky-400 font-mono">Đang quét...</strong></span>
       </div>
     </div>
   </div>
@@ -720,6 +718,7 @@
         <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="🎉" title="Ăn mừng (3.5s)">🎉</button>
         <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="😭" title="Khóc gục (3.5s)">😭</button>
         <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="🙏" title="Cầu may (3.5s)">🙏</button>
+        <button class="reaction-btn w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl hover:bg-slate-800 flex items-center justify-center text-base sm:text-lg active:scale-125 transition" data-emoji="😵" title="Đo ván (nằm gục)">😵</button>
       </div>
     </div>
   </div>
@@ -799,14 +798,31 @@
             <div id="wardrobe-3d-viewport" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
           </div>
 
-          <!-- TÙY CHỌN CHỌN MÀU DA NHÂN VẬT (YÊU CẦU 2.2: Bỏ giới thiệu text) -->
+          <!-- TÙY CHỌN CHỌN MÀU DA NHÂN VẬT (YÊU CẦU 2.2 & 2.9) -->
           <div class="p-3 rounded-2xl bg-slate-950/85 border border-slate-800 text-left">
             <div class="mb-2">
               <label class="block text-xs font-bold text-slate-300">MÀU DA NHÂN VẬT:</label>
             </div>
-            <!-- Palette các nút màu da -->
-            <div id="wardrobe-skin-tones-palette" class="grid grid-cols-4 sm:grid-cols-8 gap-2">
+            <!-- Palette các nút màu da (14 màu: 2 hàng x 7 nút) -->
+            <div id="wardrobe-skin-tones-palette" class="grid grid-cols-7 gap-1.5 sm:gap-2">
               <!-- Render động bởi game.js -->
+            </div>
+          </div>
+
+          <!-- TÙY CHỌN MÀU MẮT & LÔNG MÀY (YÊU CẦU 2.9) -->
+          <div class="p-3 rounded-2xl bg-slate-950/85 border border-slate-800 text-left">
+            <div class="mb-2">
+              <label class="block text-xs font-bold text-slate-300">MÀU MẮT & LÔNG MÀY:</label>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button id="btn-face-color-black" type="button" class="btn-face-color flex-1 py-1.5 px-3 rounded-xl border-2 border-yellow-400 bg-yellow-400/20 text-yellow-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95" data-color="#111111">
+                <span class="w-3.5 h-3.5 rounded-full bg-[#111111] border border-white/40 inline-block shadow-sm"></span>
+                <span>Đen (Chuẩn)</span>
+              </button>
+              <button id="btn-face-color-white" type="button" class="btn-face-color flex-1 py-1.5 px-3 rounded-xl border-2 border-slate-700 bg-slate-900 text-slate-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95 hover:border-slate-500" data-color="#ffffff">
+                <span class="w-3.5 h-3.5 rounded-full bg-[#ffffff] border border-slate-400 inline-block shadow-sm"></span>
+                <span>Trắng</span>
+              </button>
             </div>
           </div>
         </div>
@@ -834,9 +850,9 @@
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/audio.js?v=2.5"></script>
-  <script src="/js/characters.js?v=2.5"></script>
-  <script src="/js/scene3d.js?v=2.5"></script>
-  <script src="/js/game.js?v=2.5"></script>
+  <script src="/js/audio.js?v=2.9"></script>
+  <script src="/js/characters.js?v=2.9"></script>
+  <script src="/js/scene3d.js?v=2.9"></script>
+  <script src="/js/game.js?v=2.9"></script>
 </body>
 </html>

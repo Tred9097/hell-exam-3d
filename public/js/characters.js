@@ -173,16 +173,24 @@ class CharacterModelManager {
 
 const charModelMgr = new CharacterModelManager();
 
-// BẢNG MÀU DA NHÂN VẬT THỜI TRANG (YÊU CẦU 2.0)
+// BẢNG MÀU DA NHÂN VẬT THỜI TRANG (YÊU CẦU 2.0 & 2.9)
 const SKIN_TONE_PALETTE = [
+  // Tông màu tự nhiên
   { id: 'fair', name: 'Trắng hồng', color: '#ffd5b8', hex: '#ffd5b8' },
   { id: 'natural', name: 'Vàng Châu Á', color: '#f2c190', hex: '#f2c190' },
   { id: 'porcelain', name: 'Trắng sứ', color: '#fae7db', hex: '#fae7db' },
   { id: 'tan', name: 'Bánh mật', color: '#cb8a58', hex: '#cb8a58' },
   { id: 'sun_kissed', name: 'Rám nắng', color: '#a5653b', hex: '#a5653b' },
   { id: 'chocolate', name: 'Socola đậm', color: '#60381e', hex: '#60381e' },
-  { id: 'alien', name: 'Alien dạ quang', color: '#34d399', hex: '#34d399' },
-  { id: 'mystic', name: 'Tím huyền bí', color: '#a855f7', hex: '#a855f7' }
+  // Tông màu phong cách mới (Yêu cầu 2.9: xám, đỏ, cam, vàng, xanh lá, xanh dương, đen, tím)
+  { id: 'gray', name: 'Xám', color: '#64748b', hex: '#64748b' },
+  { id: 'red', name: 'Đỏ', color: '#ef4444', hex: '#ef4444' },
+  { id: 'orange', name: 'Cam', color: '#f97316', hex: '#f97316' },
+  { id: 'yellow', name: 'Vàng', color: '#eab308', hex: '#eab308' },
+  { id: 'green', name: 'Xanh lá', color: '#22c55e', hex: '#22c55e' },
+  { id: 'blue', name: 'Xanh dương', color: '#3b82f6', hex: '#3b82f6' },
+  { id: 'black', name: 'Đen', color: '#18181b', hex: '#18181b' },
+  { id: 'mystic', name: 'Tím', color: '#a855f7', hex: '#a855f7' }
 ];
 
 class StudentCharacter {
@@ -191,6 +199,7 @@ class StudentCharacter {
     this.name = playerData.name || 'Sĩ Tử';
     this.modelId = playerData.characterModel || playerData.characterType || 'Casual_Male';
     this.skinColor = playerData.skinColor || '#f2c190';
+    this.faceColor = playerData.faceColor || '#111111';
     this.seatIndex = playerData.seatIndex || 0;
     this.deskPosition = deskPosition || new THREE.Vector3(0, 0, 0);
     this.seatOffset = seatOffset || { x: 0, y: 0, z: 0.62 };
@@ -346,6 +355,7 @@ class StudentCharacter {
       if (emoji === '🎉') this.triggerAnimation('victory', duration);
       else if (emoji === '😭') this.triggerAnimation('cry', duration);
       else if (emoji === '🙏') this.triggerAnimation('pray', duration);
+      else if (emoji === '😵') this.triggerAnimation('death', duration);
     }
   }
 
@@ -469,6 +479,8 @@ class StudentCharacter {
 
     // Áp dụng màu da nhân vật (Yêu cầu 2.0)
     this.setSkinColor(this.skinColor);
+    // Áp dụng màu mắt & lông mày nhân vật (Yêu cầu 2.9)
+    this.setFaceColor(this.faceColor);
 
     // Kích hoạt AnimationMixer cho Model 3D
     this.mixer = new THREE.AnimationMixer(model);
@@ -503,6 +515,29 @@ class StudentCharacter {
             if (!mat._isClonedCustom) {
               child.material = mat.clone();
               child.material._isClonedCustom = true;
+            }
+            child.material.color.copy(col);
+          }
+        });
+      }
+    });
+  }
+
+  // Tùy chỉnh màu mắt & lông mày nhân vật trên vật liệu Face (Yêu cầu 2.9)
+  setFaceColor(hexColor) {
+    this.faceColor = hexColor || this.faceColor || '#111111';
+    if (!this.modelRoot) return;
+    const col = new THREE.Color(this.faceColor);
+
+    this.modelRoot.traverse((child) => {
+      if (child.isMesh && child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach((mat) => {
+          const matName = (mat.name || '').toLowerCase();
+          if (matName.includes('face') || matName.includes('eyebrow') || matName.includes('eye')) {
+            if (!mat._isClonedCustomFace) {
+              child.material = mat.clone();
+              child.material._isClonedCustomFace = true;
             }
             child.material.color.copy(col);
           }
@@ -635,7 +670,7 @@ class StudentCharacter {
     }
   }
 
-  // Kích hoạt biểu cảm / phản ứng nhân vật (Cheer khi ăn mừng, Defeat khi bị điểm kém, Hit khi bị ném trúng...)
+  // Kích hoạt biểu cảm / phản ứng nhân vật (Cheer khi ăn mừng, Defeat khi bị điểm kém, Hit khi bị ném trúng, Death khi đo ván...)
   triggerAnimation(animName, duration = 2.5) {
     if (this.isKnockedOut) return;
     if (!this.actions) return;
@@ -644,6 +679,7 @@ class StudentCharacter {
     if (animName === 'cheer' || animName === 'victory') targetClip = 'Victory';
     else if (animName === 'cry' || animName === 'defeat') targetClip = 'Defeat';
     else if (animName === 'pray') targetClip = 'PickUp';
+    else if (animName === 'death' || animName === 'knockout') targetClip = 'Death';
     else if (animName === 'hit') targetClip = 'RecieveHit';
     else if (animName === 'throw' || animName === 'punch') targetClip = 'Punch';
     else if (animName === 'jump') targetClip = 'Jump';
@@ -651,6 +687,10 @@ class StudentCharacter {
 
     if (this.actions[targetClip]) {
       const act = this.actions[targetClip];
+      const clip = act.getClip();
+      const clipDuration = clip ? clip.duration : 2.0;
+      // Thời lượng phát emote: tối thiểu theo clip, kẹp frame cuối không để rớt về bind-pose (Yêu cầu 2.9)
+      const playDuration = Math.min(duration, Math.max(clipDuration, 2.0));
 
       // Dừng êm ái action hiện tại
       if (this.currentAction && this.currentAction !== act) {
@@ -659,24 +699,28 @@ class StudentCharacter {
 
       act.reset();
       act.setLoop(THREE.LoopOnce, 1);
-      act.clampWhenFinished = false; // Yêu cầu 2.3: Không kẹp frame cuối, tránh giữ tư thế làm giật hông
+      act.clampWhenFinished = true; // Kẹp ở frame cuối mượt mà trong suốt thời lượng emote
       act.fadeIn(0.15).play();
       this.currentAction = act;
       this.currentActionName = targetClip;
 
       if (this.animTimer) clearTimeout(this.animTimer);
       this.animTimer = setTimeout(() => {
-        act.fadeOut(0.2);
+        act.fadeOut(0.25);
         setTimeout(() => {
           act.stop();
-        }, 200);
+          act.clampWhenFinished = false;
+        }, 250);
+
+        this.currentAction = null;
+        this.currentActionName = null;
 
         if (this.isSitting) {
           this._applySittingPoseImmediate();
         } else {
           this.playAction(this.isMoving ? 'Walk' : 'Idle', true, 0.25);
         }
-      }, duration * 1000);
+      }, playDuration * 1000);
     }
   }
 
@@ -694,7 +738,13 @@ class StudentCharacter {
     // 2. YÊU CẦU 2.0: KHẮC PHỤC NGỒI CHỒM HỔM (SQUAT) & LƠ LỬNG
     // Áp dụng tư thế ngồi ghế chuẩn mực cho nhân vật người:
     // Đùi đưa ngang về phía trước (-1.35 rad), bắp chân gập vuông góc xuống sàn (+1.35 rad)
-    if (this.isSitting && !this.isAnimal) {
+    // KHÔNG can thiệp xoay xương chân nếu đang phát hoạt ảnh toàn thân (Death, Victory, Defeat, PickUp) để tránh gãy chân/lệch tư thế
+    const isSpecialAnim = this.currentActionName === 'Death' || 
+                          this.currentActionName === 'Victory' || 
+                          this.currentActionName === 'Defeat' || 
+                          this.currentActionName === 'PickUp';
+
+    if (this.isSitting && !this.isAnimal && !isSpecialAnim) {
       const upL = this.bones['UpperLegL'] || this.bones['UpperLeg.L'];
       const upR = this.bones['UpperLegR'] || this.bones['UpperLeg.R'];
       const lowL = this.bones['LowerLegL'] || this.bones['LowerLeg.L'];
@@ -711,6 +761,8 @@ class StudentCharacter {
     if (!this.isSitting) {
       const isOneShot = this.currentActionName === 'Victory' || 
                         this.currentActionName === 'Defeat' || 
+                        this.currentActionName === 'PickUp' || 
+                        this.currentActionName === 'Death' || 
                         this.currentActionName === 'RecieveHit' || 
                         this.currentActionName === 'Punch' || 
                         this.currentActionName === 'Jump';
@@ -828,6 +880,7 @@ class CharacterPreviewViewer {
 
     this.currentModelId = null;
     this.currentSkinColor = '#f2c190';
+    this.currentFaceColor = '#111111';
     this.mixer = null;
     this.clock = new THREE.Clock();
 
@@ -875,9 +928,10 @@ class CharacterPreviewViewer {
     window.addEventListener('touchend', () => { this.isDragging = false; });
   }
 
-  async setCharacter(modelId, skinColor) {
+  async setCharacter(modelId, skinColor, faceColor) {
     this.currentModelId = modelId;
     if (skinColor) this.currentSkinColor = skinColor;
+    if (faceColor) this.currentFaceColor = faceColor;
 
     const data = await charModelMgr.loadModel(modelId);
     if (!data || !data.model) return;
@@ -899,8 +953,9 @@ class CharacterPreviewViewer {
 
     this.characterGroup.add(model);
 
-    // Áp dụng màu da
+    // Áp dụng màu da và màu mắt/lông mày
     this.setSkinColor(this.currentSkinColor);
+    this.setFaceColor(this.currentFaceColor);
 
     // Chạy animation Idle
     this.mixer = new THREE.AnimationMixer(model);
@@ -913,8 +968,8 @@ class CharacterPreviewViewer {
     }
   }
 
-  loadCharacter(modelId, skinColor) {
-    return this.setCharacter(modelId, skinColor);
+  loadCharacter(modelId, skinColor, faceColor) {
+    return this.setCharacter(modelId, skinColor, faceColor);
   }
 
   setSkinColor(hexColor) {
@@ -929,6 +984,27 @@ class CharacterPreviewViewer {
             if (!m._isClonedCustom) {
               c.material = m.clone();
               c.material._isClonedCustom = true;
+            }
+            c.material.color.copy(col);
+          }
+        });
+      }
+    });
+  }
+
+  setFaceColor(hexColor) {
+    this.currentFaceColor = hexColor || '#111111';
+    if (!this.characterGroup) return;
+    const col = new THREE.Color(this.currentFaceColor);
+    this.characterGroup.traverse((c) => {
+      if (c.isMesh && c.material) {
+        const mats = Array.isArray(c.material) ? c.material : [c.material];
+        mats.forEach((m) => {
+          const matName = (m.name || '').toLowerCase();
+          if (matName.includes('face') || matName.includes('eyebrow') || matName.includes('eye')) {
+            if (!m._isClonedCustomFace) {
+              c.material = m.clone();
+              c.material._isClonedCustomFace = true;
             }
             c.material.color.copy(col);
           }

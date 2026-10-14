@@ -6,8 +6,14 @@ let currentRoom = null;
 let isHost = false;
 let selectedSkinId = 'Casual_Male'; // Quaternius 3D Modular Skin v2.0
 let selectedSkinColor = '#f2c190';  // Vàng Châu Á mặc định (Yêu cầu 2.0)
+let selectedFaceColor = '#111111';  // Đen mặc định cho mắt và lông mày (Yêu cầu 2.9)
+try {
+  const savedFace = localStorage.getItem('hell_exam_face_color');
+  if (savedFace) selectedFaceColor = savedFace;
+} catch (e) {}
 let tempWardrobeSkinId = 'Casual_Male';
 let tempWardrobeSkinColor = '#f2c190';
+let tempWardrobeFaceColor = selectedFaceColor;
 let startPreviewViewer = null;
 let wardrobePreviewViewer = null;
 
@@ -327,14 +333,11 @@ function initSocket() {
     }
   });
 
-  // Phản ứng biểu cảm học sinh (Tự động dừng sau 3.5s)
-  socket.on('player_reaction', ({ playerId, emoji, anim }) => {
+  // Phản ứng biểu cảm học sinh (Tự động dừng sau 3.0s, showEmoji tự kích hoạt triggerAnimation chuẩn)
+  socket.on('player_reaction', ({ playerId, emoji }) => {
     const char = scene3d.characters.get(playerId);
     if (char) {
-      char.showEmoji(emoji, 3.5);
-      if (anim && !char.isKnockedOut) {
-        char.triggerAnimation(anim, 2.5);
-      }
+      char.showEmoji(emoji, 3.0);
     }
   });
 
@@ -781,6 +784,9 @@ function updateUIWithRoomState(room) {
       if (scene3d) scene3d.setCameraMode('BLACKBOARD');
       break;
   }
+
+  // Cập nhật ẩn/hiện điều khiển joystick / pc hint theo trạng thái phòng (Yêu cầu 2.9)
+  applyDeviceControlsVisibility();
 }
 
 function hideAllPhaseOverlays() {
@@ -797,6 +803,7 @@ function hideAllPhaseOverlays() {
   // YÊU CẦU 2.6: Ẩn nút tương tác cảm ứng di động và cửa sổ nổi khi vào các giai đoạn chọn bài thi & thi đấu
   document.getElementById('btn-touch-interact')?.classList.add('hidden');
   document.getElementById('interaction-prompt')?.classList.add('hidden');
+  applyDeviceControlsVisibility();
 }
 
 function renderPlayerList(players) {
@@ -1311,12 +1318,13 @@ function bindUIEvents() {
     window.audioMgr.init();
     const name = document.getElementById('input-player-name')?.value.trim() || 'Học Sinh Gương Mẫu';
 
-    socket.emit('create_room', { playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, characterType: selectedSkinId }, (res) => {
+    socket.emit('create_room', { playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, faceColor: selectedFaceColor, characterType: selectedSkinId }, (res) => {
       if (res.success) {
         addChatMessage('📢 HỆ THỐNG', `Tạo phòng thành công! Mã phòng: ${res.roomCode}`, false, 'system');
         document.getElementById('start-screen-modal')?.classList.add('hidden');
         document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
+        applyDeviceControlsVisibility();
       }
     });
   });
@@ -1332,12 +1340,13 @@ function bindUIEvents() {
       return;
     }
 
-    socket.emit('join_room', { roomCode: code, playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, characterType: selectedSkinId }, (res) => {
+    socket.emit('join_room', { roomCode: code, playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, faceColor: selectedFaceColor, characterType: selectedSkinId }, (res) => {
       if (res.success) {
         addChatMessage('📢 HỆ THỐNG', `Đã vào phòng ${res.roomCode}!`, false, 'system');
         document.getElementById('start-screen-modal')?.classList.add('hidden');
         document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
+        applyDeviceControlsVisibility();
       } else {
         alert(res.message);
       }
@@ -1717,7 +1726,7 @@ function initCharacterSystem() {
         cameraY: 0.92,
         lookAtY: 0.72
       });
-      startPreviewViewer.setCharacter(selectedSkinId, selectedSkinColor);
+      startPreviewViewer.setCharacter(selectedSkinId, selectedSkinColor, selectedFaceColor);
     }
   } catch (err) {
     console.warn('Lỗi khi khởi tạo Start 3D Preview:', err);
@@ -1734,6 +1743,41 @@ function initCharacterSystem() {
 
   const wardrobePaletteEl = document.getElementById('wardrobe-skin-tones-palette');
   const wardrobeGridEl = document.getElementById('wardrobe-skins-grid');
+
+  // Cập nhật trạng thái nút chọn màu mắt & lông mày (Yêu cầu 2.9)
+  const updateFaceColorButtonsUI = (color) => {
+    const btnBlack = document.getElementById('btn-face-color-black');
+    const btnWhite = document.getElementById('btn-face-color-white');
+    const isBlack = (color || '#111111').toLowerCase() === '#111111';
+    if (btnBlack) {
+      btnBlack.className = `btn-face-color flex-1 py-1.5 px-3 rounded-xl border-2 text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95 cursor-pointer ${
+        isBlack ? 'border-yellow-400 bg-yellow-400/20 text-yellow-300 ring-1 ring-yellow-400 shadow-md' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'
+      }`;
+    }
+    if (btnWhite) {
+      btnWhite.className = `btn-face-color flex-1 py-1.5 px-3 rounded-xl border-2 text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95 cursor-pointer ${
+        !isBlack ? 'border-yellow-400 bg-yellow-400/20 text-yellow-300 ring-1 ring-yellow-400 shadow-md' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'
+      }`;
+    }
+  };
+
+  document.getElementById('btn-face-color-black')?.addEventListener('click', () => {
+    tempWardrobeFaceColor = '#111111';
+    if (wardrobePreviewViewer) {
+      wardrobePreviewViewer.setFaceColor(tempWardrobeFaceColor);
+    }
+    updateFaceColorButtonsUI(tempWardrobeFaceColor);
+    if (window.audioMgr) window.audioMgr.playClick();
+  });
+
+  document.getElementById('btn-face-color-white')?.addEventListener('click', () => {
+    tempWardrobeFaceColor = '#ffffff';
+    if (wardrobePreviewViewer) {
+      wardrobePreviewViewer.setFaceColor(tempWardrobeFaceColor);
+    }
+    updateFaceColorButtonsUI(tempWardrobeFaceColor);
+    if (window.audioMgr) window.audioMgr.playClick();
+  });
 
   // Render palette màu da (Yêu cầu 2.2: Bỏ hoàn toàn text mô tả, chỉ giữ các nút màu da)
   const renderWardrobePalette = () => {
@@ -1796,7 +1840,7 @@ function initCharacterSystem() {
       card.addEventListener('click', () => {
         tempWardrobeSkinId = card.dataset.skinId;
         if (wardrobePreviewViewer) {
-          wardrobePreviewViewer.setCharacter(tempWardrobeSkinId, tempWardrobeSkinColor);
+          wardrobePreviewViewer.setCharacter(tempWardrobeSkinId, tempWardrobeSkinColor, tempWardrobeFaceColor);
         }
         renderWardrobeGrid();
         if (window.audioMgr) window.audioMgr.playClick();
@@ -1807,6 +1851,7 @@ function initCharacterSystem() {
   const openWardrobe = () => {
     tempWardrobeSkinId = selectedSkinId;
     tempWardrobeSkinColor = selectedSkinColor;
+    tempWardrobeFaceColor = selectedFaceColor;
 
     if (wardrobeModal) {
       wardrobeModal.classList.remove('hidden');
@@ -1824,7 +1869,7 @@ function initCharacterSystem() {
       }
 
       if (wardrobePreviewViewer) {
-        wardrobePreviewViewer.setCharacter(tempWardrobeSkinId, tempWardrobeSkinColor);
+        wardrobePreviewViewer.setCharacter(tempWardrobeSkinId, tempWardrobeSkinColor, tempWardrobeFaceColor);
         setTimeout(() => {
           if (wardrobePreviewViewer) wardrobePreviewViewer.resize();
         }, 50);
@@ -1835,6 +1880,7 @@ function initCharacterSystem() {
 
     renderWardrobePalette();
     renderWardrobeGrid();
+    updateFaceColorButtonsUI(tempWardrobeFaceColor);
 
     if (window.audioMgr) window.audioMgr.playClick();
   };
@@ -1857,10 +1903,14 @@ function initCharacterSystem() {
   btnWardrobeSave?.addEventListener('click', () => {
     selectedSkinId = tempWardrobeSkinId;
     selectedSkinColor = tempWardrobeSkinColor;
+    selectedFaceColor = tempWardrobeFaceColor;
+    try {
+      localStorage.setItem('hell_exam_face_color', selectedFaceColor);
+    } catch (e) {}
 
     // Cập nhật preview ở start screen
     if (startPreviewViewer) {
-      startPreviewViewer.setCharacter(selectedSkinId, selectedSkinColor);
+      startPreviewViewer.setCharacter(selectedSkinId, selectedSkinColor, selectedFaceColor);
     }
     updateStartPreviewBadges();
 
@@ -1869,6 +1919,7 @@ function initCharacterSystem() {
       socket.emit('update_customization', {
         characterModel: selectedSkinId,
         skinColor: selectedSkinColor,
+        faceColor: selectedFaceColor,
         characterType: selectedSkinId
       });
       showToast('Đã đổi nhân vật thành công!');
@@ -2064,13 +2115,21 @@ function applyDeviceControlsVisibility() {
   const joystickContainer = document.getElementById('virtual-joystick-container');
   const touchInteractBtn = document.getElementById('btn-touch-interact');
   const pcHintEl = document.getElementById('pc-controls-hint');
+  const startModal = document.getElementById('start-screen-modal');
+  const inStartScreen = startModal && !startModal.classList.contains('hidden');
+  const isLobby = currentRoom !== null && !inStartScreen && currentRoom.state === 'LOBBY';
 
   if (isMobile) {
-    // ĐIỆN THOẠI / CẢM ỨNG (Yêu cầu 1.8):
-    // 1. Hiện joystick ảo di chuyển
+    // ĐIỆN THOẠI / CẢM ỨNG (Yêu cầu 1.8 & 2.9):
+    // 1. Chỉ hiện joystick ảo di chuyển khi ĐÃ VÀO PHÒNG và đang ở sảnh chờ (LOBBY), ẩn khi ở menu chính hoặc khi đang thi
     if (joystickContainer) {
-      joystickContainer.classList.remove('hidden');
-      joystickContainer.classList.add('flex');
+      if (isLobby) {
+        joystickContainer.classList.remove('hidden');
+        joystickContainer.classList.add('flex');
+      } else {
+        joystickContainer.classList.add('hidden');
+        joystickContainer.classList.remove('flex');
+      }
     }
     // 2. Ẩn tip phím W A S D di chuyển PC
     if (pcHintEl) {
@@ -2088,10 +2147,15 @@ function applyDeviceControlsVisibility() {
     if (touchInteractBtn) {
       touchInteractBtn.classList.add('hidden');
     }
-    // 3. Hiện tip phím W A S D và phím E trên PC
+    // 3. Hiện tip phím W A S D và phím E trên PC khi ở sảnh
     if (pcHintEl) {
-      pcHintEl.classList.remove('hidden');
-      pcHintEl.classList.add('flex');
+      if (isLobby) {
+        pcHintEl.classList.remove('hidden');
+        pcHintEl.classList.add('flex');
+      } else {
+        pcHintEl.classList.add('hidden');
+        pcHintEl.classList.remove('flex');
+      }
     }
   }
 }

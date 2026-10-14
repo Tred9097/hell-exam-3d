@@ -301,6 +301,7 @@ function getRoomState(room) {
       characterModel: p.characterModel || p.characterType || 'Casual_Male',
       characterType: p.characterModel || p.characterType || 'Casual_Male',
       skinColor: p.skinColor || '#f0c294',
+      faceColor: p.faceColor || '#111111',
       color: p.color,
       accessory: p.accessory,
       hatColor: p.hatColor || '#dc2626',
@@ -1193,7 +1194,7 @@ io.on('connection', (socket) => {
   socket.emit('server_network_info', getServerNetworkInfo());
 
   // 1. Tạo phòng
-  socket.on('create_room', ({ playerName, characterModel, skinColor, characterType, color, accessory, hatColor }, callback) => {
+  socket.on('create_room', ({ playerName, characterModel, skinColor, faceColor, characterType, color, accessory, hatColor }, callback) => {
     const code = generateRoomCode();
     const room = {
       code: code,
@@ -1215,6 +1216,7 @@ io.on('connection', (socket) => {
       characterModel: skin,
       characterType: skin,
       skinColor: skinColor || '#f0c294',
+      faceColor: faceColor || '#111111',
       color: color || '#2563eb',
       accessory: accessory || 'headband',
       hatColor: hatColor || '#dc2626',
@@ -1237,7 +1239,7 @@ io.on('connection', (socket) => {
   });
 
   // 2. Vào phòng
-  socket.on('join_room', ({ roomCode, playerName, characterModel, skinColor, characterType, color, accessory, hatColor }, callback) => {
+  socket.on('join_room', ({ roomCode, playerName, characterModel, skinColor, faceColor, characterType, color, accessory, hatColor }, callback) => {
     const code = (roomCode || '').toUpperCase().trim();
     const room = rooms.get(code);
 
@@ -1265,6 +1267,7 @@ io.on('connection', (socket) => {
       characterModel: joinSkin,
       characterType: joinSkin,
       skinColor: skinColor || '#f0c294',
+      faceColor: faceColor || '#111111',
       color: color || '#16a34a',
       accessory: accessory || 'none',
       hatColor: hatColor || '#dc2626',
@@ -1540,6 +1543,7 @@ io.on('connection', (socket) => {
     if (emoji === '🎉') anim = 'cheer';
     if (emoji === '😭') anim = 'cry';
     if (emoji === '🙏') anim = 'pray';
+    if (emoji === '😵') anim = 'death';
 
     io.to(currentRoom.code).emit('player_reaction', {
       playerId: socket.id,
@@ -1563,8 +1567,8 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 13. Cập nhật diện mạo (tên, skin nhân vật 3D, màu da - Yêu cầu 2.0)
-  socket.on('update_customization', ({ name, characterModel, skinColor, characterType, color, accessory, hatColor }) => {
+  // 13. Cập nhật diện mạo (tên, skin nhân vật 3D, màu da, màu mắt/lông mày - Yêu cầu 2.0 & 2.9)
+  socket.on('update_customization', ({ name, characterModel, skinColor, faceColor, characterType, color, accessory, hatColor }) => {
     if (!currentRoom || !playerObj) return;
     if (name) playerObj.name = name.slice(0, 20);
     const skin = characterModel || characterType;
@@ -1573,6 +1577,7 @@ io.on('connection', (socket) => {
       playerObj.characterType = skin;
     }
     if (skinColor) playerObj.skinColor = skinColor;
+    if (faceColor) playerObj.faceColor = faceColor;
     if (color) playerObj.color = color;
     if (accessory) playerObj.accessory = accessory;
     if (hatColor) playerObj.hatColor = hatColor;

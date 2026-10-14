@@ -869,9 +869,10 @@ class SchoolScene3D {
         this.scene.add(char.group);
         this.characters.set(p.id, char);
       } else {
-        // Cập nhật lại nhân vật nếu đổi skin hoặc màu da (Yêu cầu 2.0)
+        // Cập nhật lại nhân vật nếu đổi skin, màu da hoặc màu mắt/lông mày (Yêu cầu 2.0 & 2.9)
         const newModelId = p.characterModel || p.characterType || 'Casual_Male';
         const newSkinColor = p.skinColor || '#f2c190';
+        const newFaceColor = p.faceColor || '#111111';
         if (newModelId !== char.modelId) {
           const wasSitting = char.isSitting;
           const curPos = char.group.position.clone();
@@ -885,8 +886,13 @@ class SchoolScene3D {
           }
           this.scene.add(char.group);
           this.characters.set(p.id, char);
-        } else if (newSkinColor !== char.skinColor) {
-          char.setSkinColor(newSkinColor);
+        } else {
+          if (newSkinColor !== char.skinColor) {
+            char.setSkinColor(newSkinColor);
+          }
+          if (newFaceColor !== char.faceColor) {
+            char.setFaceColor(newFaceColor);
+          }
         }
       }
 
