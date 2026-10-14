@@ -683,9 +683,15 @@
     <!-- Nhập từ khi đến lượt -->
     <div id="wc-input-container" class="pointer-events-auto w-full max-w-md p-3 sm:p-4 rounded-3xl glass-panel-gold shadow-2xl mb-20 sm:mb-24 flex flex-col items-center">
       <div id="wc-error-msg" class="text-rose-400 font-bold text-xs mb-1.5 min-h-[16px]"></div>
-      <div class="flex items-center space-x-2 w-full">
-        <input id="wc-word-input" type="text" placeholder="Nhập từ ghép 2 tiếng..." autocomplete="off" class="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl bg-slate-950 border border-slate-700 text-yellow-300 font-bold text-sm sm:text-base focus:outline-none focus:border-yellow-400">
-        <button id="wc-submit-btn" class="px-4 sm:px-5 py-2 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition">
+      <div class="w-full flex items-center justify-between text-[11px] text-amber-200/90 font-bold mb-1.5 px-1">
+        <span>💡 Chỉ cần nhập 1 từ nối tiếp hoặc cả cụm 2 tiếng</span>
+      </div>
+      <div class="flex items-center space-x-1.5 sm:space-x-2 w-full">
+        <span id="wc-prefix-badge" class="px-2.5 sm:px-3 py-2 sm:py-3 rounded-2xl bg-slate-900 border border-amber-400/50 text-amber-300 font-mono font-black text-xs sm:text-sm shrink-0 select-none shadow-inner flex items-center justify-center">
+          ... +
+        </span>
+        <input id="wc-word-input" type="text" placeholder="Nhập từ nối tiếp..." autocomplete="off" class="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl bg-slate-950 border border-slate-700 text-yellow-300 font-bold text-xs sm:text-base focus:outline-none focus:border-yellow-400">
+        <button id="wc-submit-btn" class="px-4 sm:px-5 py-2 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition shrink-0 shadow-md">
           NỘP TỪ
         </button>
       </div>
@@ -715,7 +721,7 @@
   </div>
 
   <!-- 12. KHU VỰC GÓC DƯỚI BÊN PHẢI: KHUNG CHAT & HÀNG NÚT CẢM XÚC -->
-  <div class="fixed bottom-2 sm:bottom-3 right-2 sm:right-3 z-20 flex flex-col items-end space-y-1.5 sm:space-y-2 pointer-events-auto max-w-[calc(100vw-16px)] sm:max-w-sm">
+  <div class="fixed bottom-2 sm:bottom-3 right-2 sm:right-3 z-50 flex flex-col items-end space-y-1.5 sm:space-y-2 pointer-events-auto max-w-[calc(100vw-16px)] sm:max-w-sm">
     
     <!-- Khung Chat Thu Gọn / Mở Rộng -->
     <div id="chat-container-collapsible" class="flex flex-col items-end space-y-1.5 transition-all">

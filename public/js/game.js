@@ -247,13 +247,31 @@ function initSocket() {
     }
   });
 
-  socket.on('player_eliminated', ({ playerId, playerName, reason }) => {
-    showBannerToast(`❌ ${playerName} BỊ LOẠI! (${reason})`);
-    if (window.audioMgr) window.audioMgr.playBuzzer();
-    const char = scene3d.characters.get(playerId);
-    if (char) {
-      char.setAnimation('cry');
-      char.showEmoji('😭', 4.0);
+  socket.on('player_eliminated', ({ playerId, playerName, reason, newWord }) => {
+    showBannerToast(`💥 ${playerName} BỊ LOẠI! (${reason})`);
+    if (window.audioMgr) {
+      window.audioMgr.playBuzzer();
+      window.audioMgr.playExplosion();
+    }
+    if (scene3d) {
+      scene3d.triggerExplosionAtPlayer(playerId);
+    }
+    if (newWord) {
+      const currentWordEl = document.getElementById('wc-current-word');
+      if (currentWordEl) currentWordEl.innerText = newWord.toUpperCase();
+
+      const syllables = newWord.trim().split(/\s+/).filter(Boolean);
+      const lastSyllable = syllables.length > 0 ? syllables[syllables.length - 1] : '';
+      const prefixBadge = document.getElementById('wc-prefix-badge');
+      if (prefixBadge) {
+        prefixBadge.innerText = lastSyllable ? `${lastSyllable.toUpperCase()} +` : '... +';
+      }
+      const wordInput = document.getElementById('wc-word-input');
+      if (wordInput && lastSyllable) {
+        wordInput.placeholder = `Nhập từ nối tiếp (VD: ${lastSyllable} ... hoặc 1 từ)`;
+      }
+
+      showToast(`⚡ Giám thị đổi từ mới: "${newWord.toUpperCase()}"!`);
     }
   });
 
@@ -269,6 +287,7 @@ function initSocket() {
   // --- SỰ KIỆN TỔNG KẾT VÒNG (ROUND SUMMARY) ---
   socket.on('round_summary_start', ({ round, leaderboard }) => {
     handleRoundSummary(round, leaderboard);
+    if (scene3d) scene3d.resetAllKnockedOut();
   });
 
   socket.on('trigger_confetti', ({ topPlayerId }) => {
@@ -308,6 +327,9 @@ function initSocket() {
     const char = scene3d.characters.get(playerId);
     if (char) {
       char.showEmoji(emoji, 3.5);
+      if (anim && !char.isKnockedOut) {
+        char.triggerAnimation(anim, 2.5);
+      }
     }
   });
 
@@ -1036,6 +1058,18 @@ function updateWordChainUI(wc) {
     inputContainer.style.display = isMyTurn ? 'flex' : 'none';
   }
 
+  // Tách tiếng cuối của từ hiện tại để hiển thị huy hiệu gợi ý (Yêu cầu 2.5)
+  const syllables = (wc.currentWord || '').trim().split(/\s+/).filter(Boolean);
+  const lastSyllable = syllables.length > 0 ? syllables[syllables.length - 1] : '';
+  const prefixBadge = document.getElementById('wc-prefix-badge');
+  if (prefixBadge) {
+    prefixBadge.innerText = lastSyllable ? `${lastSyllable.toUpperCase()} +` : '... +';
+  }
+  const wordInput = document.getElementById('wc-word-input');
+  if (wordInput && lastSyllable) {
+    wordInput.placeholder = `Nhập từ nối tiếp (VD: ${lastSyllable} ... hoặc 1 từ)`;
+  }
+
   const turnPlayer = currentRoom?.players?.find(p => p.id === wc.currentTurnPlayerId);
   if (turnLabel) {
     turnLabel.innerText = isMyTurn ? '👉 LƯỢT CỦA BẠN! HÃY NỐI TỪ NHANH LÊN!' : `Đang đợi: ${turnPlayer ? turnPlayer.name : '...'}`;
@@ -1070,6 +1104,22 @@ function handleWordTurnStart(playerId, playerName, currentWord, turnTimeLeft) {
       input.focus();
     }
   }
+
+  if (currentWord) {
+    const currentWordEl = document.getElementById('wc-current-word');
+    if (currentWordEl) currentWordEl.innerText = currentWord.toUpperCase();
+    const syllables = currentWord.trim().split(/\s+/).filter(Boolean);
+    const lastSyllable = syllables.length > 0 ? syllables[syllables.length - 1] : '';
+    const prefixBadge = document.getElementById('wc-prefix-badge');
+    if (prefixBadge) {
+      prefixBadge.innerText = lastSyllable ? `${lastSyllable.toUpperCase()} +` : '... +';
+    }
+    const wordInput = document.getElementById('wc-word-input');
+    if (wordInput && lastSyllable) {
+      wordInput.placeholder = `Nhập từ nối tiếp (VD: ${lastSyllable} ... hoặc 1 từ)`;
+    }
+  }
+
   updateTurnTimer(turnTimeLeft);
 }
 
@@ -1180,6 +1230,8 @@ function resetExamClientState() {
   // 3. Reset nối từ
   const wcInput = document.getElementById('wc-word-input');
   if (wcInput) wcInput.value = '';
+  const wcBadge = document.getElementById('wc-prefix-badge');
+  if (wcBadge) wcBadge.innerText = '... +';
   const wcHistory = document.getElementById('wc-history-list');
   if (wcHistory) wcHistory.innerHTML = '';
   const wcErr = document.getElementById('wc-error-msg');
@@ -1203,6 +1255,9 @@ function resetExamClientState() {
   document.getElementById('spinqa-asker-status-msg') && (document.getElementById('spinqa-asker-status-msg').innerText = '');
   document.getElementById('spinqa-responder-status-msg') && (document.getElementById('spinqa-responder-status-msg').innerText = '');
   document.getElementById('spinqa-answer-status-msg') && (document.getElementById('spinqa-answer-status-msg').innerText = '');
+
+  // 5. Phục hồi toàn bộ nhân vật đứng hoặc ngồi dậy bình thường (Yêu cầu 2.5)
+  if (scene3d) scene3d.resetAllKnockedOut();
 }
 
 function renderSummaryUI(round, leaderboard) {

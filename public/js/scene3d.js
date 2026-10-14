@@ -19,6 +19,9 @@ class SchoolScene3D {
     this.characters = new Map();
     this.projectiles = [];
     this.confettiParticles = [];
+    this.explosions = [];
+    this.cameraShakeTime = 0;
+    this.cameraShakeIntensity = 0;
 
     // Camera animation targets
     this.camTargetPos = new THREE.Vector3(0, 5.2, 9.8);
@@ -752,6 +755,95 @@ class SchoolScene3D {
     this.projectiles.push(projectile);
   }
 
+  // YÊU CẦU 2.5: Hoạt ảnh vụ nổ 3D bùng nổ ngay tại vị trí nhân vật bị loại
+  triggerExplosionAtPlayer(playerId) {
+    const char = this.characters.get(playerId);
+    let pos = new THREE.Vector3(0, 0.8, 0);
+    if (char) {
+      char.setKnockedOut(true);
+      pos.copy(char.group.position);
+      pos.y += 0.8;
+    }
+
+    // Rung camera chấn động nhẹ
+    this.cameraShakeTime = 0.45;
+    this.cameraShakeIntensity = 0.25;
+
+    const explosionGroup = new THREE.Group();
+    explosionGroup.position.copy(pos);
+    this.scene.add(explosionGroup);
+
+    // 1. Quả cầu lửa chớp sáng bung rộng
+    const flashGeo = new THREE.SphereGeometry(0.35, 14, 14);
+    const flashMat = new THREE.MeshBasicMaterial({
+      color: 0xffaa00,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending
+    });
+    const flashMesh = new THREE.Mesh(flashGeo, flashMat);
+    explosionGroup.add(flashMesh);
+
+    // 2. Vòng sóng xung kích lan nhanh trên sàn
+    const ringGeo = new THREE.RingGeometry(0.1, 0.35, 24);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xff3300,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.y = -pos.y + 0.04;
+    explosionGroup.add(ringMesh);
+
+    // 3. Mảnh vỡ nổ tung và tia lửa đỏ/vàng/khói
+    const particleCount = 28;
+    const particles = [];
+    const shardGeo = new THREE.BoxGeometry(0.09, 0.09, 0.09);
+    const colors = [0xff2200, 0xff7700, 0xffcc00, 0x333333, 0xffffff];
+
+    for (let i = 0; i < particleCount; i++) {
+      const col = colors[Math.floor(Math.random() * colors.length)];
+      const shardMat = new THREE.MeshBasicMaterial({ color: col });
+      const shard = new THREE.Mesh(shardGeo, shardMat);
+      
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3.5 + Math.random() * 4.5;
+      const upSpeed = 2.5 + Math.random() * 4.0;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        upSpeed,
+        Math.sin(angle) * speed
+      );
+      const rotVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 15,
+        (Math.random() - 0.5) * 15,
+        (Math.random() - 0.5) * 15
+      );
+      explosionGroup.add(shard);
+      particles.push({ mesh: shard, vel, rotVel });
+    }
+
+    this.explosions.push({
+      group: explosionGroup,
+      flashMesh,
+      ringMesh,
+      particles,
+      elapsed: 0,
+      duration: 1.2
+    });
+  }
+
+  // YÊU CẦU 2.5: Phục hồi toàn bộ nhân vật đứng/ngồi dậy bình thường sau khi hết game/vòng
+  resetAllKnockedOut() {
+    for (const char of this.characters.values()) {
+      if (char.isKnockedOut) {
+        char.setKnockedOut(false);
+      }
+    }
+  }
+
   syncPlayers(playerList) {
     const currentIds = new Set(playerList.map(p => p.id));
 
@@ -1142,6 +1234,40 @@ class SchoolScene3D {
       }
     });
 
+    // 5B. Cập nhật các vụ nổ (Yêu cầu 2.5)
+    for (let i = this.explosions.length - 1; i >= 0; i--) {
+      const exp = this.explosions[i];
+      exp.elapsed += delta;
+      const t = exp.elapsed / exp.duration;
+
+      if (t >= 1.0) {
+        this.scene.remove(exp.group);
+        this.explosions.splice(i, 1);
+      } else {
+        const flashScale = 1.0 + t * 6.5;
+        exp.flashMesh.scale.set(flashScale, flashScale, flashScale);
+        exp.flashMesh.material.opacity = Math.max(0, 1.0 - t * 2.2);
+
+        const ringScale = 1.0 + t * 11.0;
+        exp.ringMesh.scale.set(ringScale, ringScale, 1.0);
+        exp.ringMesh.material.opacity = Math.max(0, 0.9 * (1.0 - t));
+
+        exp.particles.forEach(p => {
+          p.vel.y -= 9.8 * delta;
+          p.vel.x *= 0.96;
+          p.vel.z *= 0.96;
+          p.mesh.position.addScaledVector(p.vel, delta);
+          p.mesh.rotation.x += p.rotVel.x * delta;
+          p.mesh.rotation.y += p.rotVel.y * delta;
+          p.mesh.rotation.z += p.rotVel.z * delta;
+          if (p.mesh.position.y < -exp.group.position.y + 0.04) {
+            p.mesh.position.y = -exp.group.position.y + 0.04;
+            p.vel.y = -p.vel.y * 0.25;
+          }
+        });
+      }
+    }
+
     // 6. CẬP NHẬT CAMERA: Follow camera hoặc xoay tự do theo chuột/chạm
     if (Date.now() - this.lastUserDragTime < 4000) {
       const x = this.camCurrentLookAt.x + this.cameraDistance * Math.sin(this.polarAngle) * Math.sin(this.azimuthAngle);
@@ -1160,6 +1286,14 @@ class SchoolScene3D {
     this.camera.position.lerp(this.camTargetPos, 0.08);
     this.camCurrentLookAt.lerp(this.camTargetLookAt, 0.08);
     this.camera.lookAt(this.camCurrentLookAt);
+
+    // Chấn động camera khi nổ (Yêu cầu 2.5)
+    if (this.cameraShakeTime > 0) {
+      this.cameraShakeTime -= delta;
+      const shakeAmt = this.cameraShakeIntensity * (this.cameraShakeTime / 0.45);
+      this.camera.position.x += (Math.random() - 0.5) * shakeAmt;
+      this.camera.position.y += (Math.random() - 0.5) * shakeAmt;
+    }
 
     this.renderer.render(this.scene, this.camera);
   }

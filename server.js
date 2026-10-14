@@ -147,7 +147,13 @@ let publicOnlineUrl = null;
 let cloudflaredProcess = null;
 
 function startCloudflareTunnel() {
-  if (process.env.ENABLE_CLOUDFLARE_TUNNEL !== 'true') {
+  // TUÂN THỦ NGUYÊN TẮC: Tuyệt đối không tự khởi động cloudflared trên production (Render / Linux)
+  if (process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.ENABLE_CLOUDFLARE_TUNNEL === 'false') {
+    return;
+  }
+
+  // Chỉ kích hoạt trên môi trường Windows local khi có file cloudflared.exe
+  if (os.platform() !== 'win32') {
     return;
   }
 
@@ -1068,25 +1074,38 @@ function eliminatePlayer(room, playerId, reason) {
   const player = room.players.get(playerId);
   if (player) {
     player.eliminated = true;
+    let newStartingWord = null;
+
     if (room.wordChain) {
       if (!room.wordChain.eliminationOrder) room.wordChain.eliminationOrder = [];
       if (!room.wordChain.eliminationOrder.includes(playerId)) {
         room.wordChain.eliminationOrder.push(playerId);
       }
+
+      // YÊU CẦU 2.5: Khi người chơi bị loại, từ loại người chơi đó sẽ bị Giám thị đổi thành từ mới
+      newStartingWord = getRandomStartingWord();
+      room.wordChain.currentWord = newStartingWord;
+      room.wordChain.usedWords.add(newStartingWord);
+      room.wordChain.history.push({
+        word: newStartingWord,
+        player: "Giám Thị (Đổi từ mới)",
+        time: Date.now()
+      });
     }
+
     io.to(room.code).emit('player_eliminated', {
       playerId: player.id,
       playerName: player.name,
-      reason: reason
+      reason: reason,
+      newWord: newStartingWord
     });
-    io.to(room.code).emit('trigger_animation', { playerId: player.id, anim: 'cry' });
   }
 
   setTimeout(() => {
     if (room.state === 'WORD_CHAIN') {
       startWordChainTurn(room);
     }
-  }, 1800);
+  }, 2000);
 }
 
 // --- TỔNG KẾT VÒNG (ROUND SUMMARY) ---
@@ -1095,6 +1114,11 @@ function startRoundSummary(room) {
   room.state = 'ROUND_SUMMARY';
   room.round++;
   room.timerSeconds = 3; // Yêu cầu 1.4: Tự động đóng trong 3 giây
+
+  // YÊU CẦU 2.5: Hết game/Hết vòng là toàn bộ nhân vật tự động đứng/ngồi dậy bình thường
+  room.players.forEach(p => {
+    p.eliminated = false;
+  });
 
   // YÊU CẦU 1.7: Chỉ hiện điểm của bài thi đó (1-10đ)
   const sortedPlayers = Array.from(room.players.values())

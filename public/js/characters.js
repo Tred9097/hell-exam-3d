@@ -205,6 +205,7 @@ class StudentCharacter {
 
     this.isSitting = true;
     this.isMoving = false;
+    this.isKnockedOut = false;
     this.isAnimal = this.modelId === 'Cow' || this.modelId === 'Pug';
     this.sittingSeatIndex = this.seatIndex;
     this.animTimer = null;
@@ -340,10 +341,12 @@ class StudentCharacter {
       if (this.bubbleSprite) this.bubbleSprite.visible = false;
     }, duration * 1000);
 
-    // Kích hoạt animation nhân vật đồng bộ nếu có
-    if (emoji === '🎉') this.triggerAnimation('victory', duration);
-    else if (emoji === '😭') this.triggerAnimation('cry', duration);
-    else if (emoji === '🙏') this.triggerAnimation('victory', duration);
+    // Kích hoạt animation nhân vật đồng bộ nếu có (chỉ chạy khi không bị nằm gục)
+    if (!this.isKnockedOut) {
+      if (emoji === '🎉') this.triggerAnimation('victory', duration);
+      else if (emoji === '😭') this.triggerAnimation('cry', duration);
+      else if (emoji === '🙏') this.triggerAnimation('pray', duration);
+    }
   }
 
   // Nổi tin nhắn nói chuyện lên đầu nhân vật 3D (Yêu cầu 2.1)
@@ -563,6 +566,7 @@ class StudentCharacter {
   }
 
   setSitting(isSitting, seatPos, seatIndex) {
+    if (this.isKnockedOut) return;
     this.isSitting = isSitting;
     if (this.animTimer) {
       clearTimeout(this.animTimer);
@@ -587,13 +591,59 @@ class StudentCharacter {
     }
   }
 
+  // YÊU CẦU 2.5: Trạng thái nằm gục khi bị loại & nổ tung, tự động hồi phục khi hết game/vòng
+  setKnockedOut(isKnockedOut) {
+    this.isKnockedOut = !!isKnockedOut;
+    if (this.animTimer) {
+      clearTimeout(this.animTimer);
+      this.animTimer = null;
+    }
+
+    if (this.isKnockedOut) {
+      this.showEmoji('💥', 6.0);
+
+      if (this.actions && this.actions['Death']) {
+        Object.keys(this.actions).forEach(key => {
+          if (key !== 'Death') {
+            this.actions[key].stop();
+          }
+        });
+        const death = this.actions['Death'];
+        death.reset();
+        death.setLoop(THREE.LoopOnce, 1);
+        death.clampWhenFinished = true; // Kẹp ở frame cuối: nằm gục hoàn toàn
+        death.fadeIn(0.12).play();
+        this.currentAction = death;
+        this.currentActionName = 'Death';
+      } else {
+        // Fallback ngã nằm trên sàn nếu model không có clip Death
+        this.group.rotation.z = Math.PI / 2;
+        this.group.position.y = 0.06;
+      }
+    } else {
+      // Hồi phục: đứng hoặc ngồi dậy bình thường
+      this.group.rotation.z = 0;
+      if (this.actions && this.actions['Death']) {
+        this.actions['Death'].stop();
+      }
+      if (this.isSitting) {
+        this._applySittingPoseImmediate();
+      } else {
+        this.group.position.y = 0.02;
+        this.playAction(this.isMoving ? 'Walk' : 'Idle', true, 0.25);
+      }
+    }
+  }
+
   // Kích hoạt biểu cảm / phản ứng nhân vật (Cheer khi ăn mừng, Defeat khi bị điểm kém, Hit khi bị ném trúng...)
   triggerAnimation(animName, duration = 2.5) {
+    if (this.isKnockedOut) return;
     if (!this.actions) return;
 
     let targetClip = null;
     if (animName === 'cheer' || animName === 'victory') targetClip = 'Victory';
     else if (animName === 'cry' || animName === 'defeat') targetClip = 'Defeat';
+    else if (animName === 'pray') targetClip = 'PickUp';
     else if (animName === 'hit') targetClip = 'RecieveHit';
     else if (animName === 'throw' || animName === 'punch') targetClip = 'Punch';
     else if (animName === 'jump') targetClip = 'Jump';
@@ -634,6 +684,11 @@ class StudentCharacter {
     // 1. Cập nhật AnimationMixer của mô hình 3D Quaternius
     if (this.mixer) {
       this.mixer.update(delta);
+    }
+
+    // YÊU CẦU 2.5: Nếu đang bị loại (nằm gục do nổ), không can thiệp xoay xương ngồi ghế hay chuyển Walk/Idle
+    if (this.isKnockedOut) {
+      return;
     }
 
     // 2. YÊU CẦU 2.0: KHẮC PHỤC NGỒI CHỒM HỔM (SQUAT) & LƠ LỬNG

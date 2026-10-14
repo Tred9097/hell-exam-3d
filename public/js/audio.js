@@ -334,6 +334,54 @@ class AudioManager {
     osc.start(now);
     osc.stop(now + 0.06);
   }
+
+  // Tiếng nổ tung khi người chơi bị loại (Yêu cầu 2.5)
+  playExplosion() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // 1. Tiếng bùm trầm (Bass boom)
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(28, now + 0.65);
+
+    oscGain.gain.setValueAtTime(0.85, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.75);
+
+    // 2. Tiếng nổ mảnh vỡ (Noise blast)
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.8);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.16));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(900, now);
+    filter.frequency.exponentialRampToValueAtTime(100, now + 0.7);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.9, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.75);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    noise.start(now);
+  }
 }
 
 // Khởi tạo đối tượng toàn cục
