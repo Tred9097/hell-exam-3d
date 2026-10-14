@@ -976,13 +976,15 @@ class SchoolScene3D {
       while (diff > Math.PI) diff -= Math.PI * 2;
       myChar.group.rotation.y += diff * Math.min(1.0, 14 * delta);
 
-      // Throttled emit move socket (85ms ~ 11 lần/giây, tối ưu mạng)
+      // Throttled emit move socket (45ms ~ 22 lần/giây, tối ưu mạng và triệt tiêu giật lag)
       const now = Date.now();
-      if (now - this.lastMoveEmitTime > 85 && this.onMyMoveCallback) {
+      if (now - this.lastMoveEmitTime > 45 && this.onMyMoveCallback) {
         this.lastMoveEmitTime = now;
         this.onMyMoveCallback({
           x: Number(nextX.toFixed(2)),
           z: Number(nextZ.toFixed(2)),
+          vx: Number((mx * speed).toFixed(2)),
+          vz: Number((mz * speed).toFixed(2)),
           rot: Number(myChar.group.rotation.y.toFixed(2)),
           isMoving: true,
           isSitting: false,
@@ -996,6 +998,8 @@ class SchoolScene3D {
           this.onMyMoveCallback({
             x: Number(myChar.group.position.x.toFixed(2)),
             z: Number(myChar.group.position.z.toFixed(2)),
+            vx: 0,
+            vz: 0,
             rot: Number(myChar.group.rotation.y.toFixed(2)),
             isMoving: false,
             isSitting: myChar.isSitting,
@@ -1063,11 +1067,13 @@ class SchoolScene3D {
       myChar.setSitting(false);
       this.cameraMode = 'STAND_FOLLOW';
       this.standingCameraIndex = 0;
-      if (this.onSeatInteracted) this.onSeatInteracted(false, myChar.sittingSeatIndex);
+       if (this.onSeatInteracted) this.onSeatInteracted(false, myChar.sittingSeatIndex);
       if (this.onMyMoveCallback) {
         this.onMyMoveCallback({
           x: Number(myChar.group.position.x.toFixed(2)),
           z: Number(myChar.group.position.z.toFixed(2)),
+          vx: 0,
+          vz: 0,
           rot: Number(myChar.group.rotation.y.toFixed(2)),
           isMoving: false,
           isSitting: false,
@@ -1085,6 +1091,8 @@ class SchoolScene3D {
         this.onMyMoveCallback({
           x: Number(seat.pos.x.toFixed(2)),
           z: Number(seat.pos.z.toFixed(2)),
+          vx: 0,
+          vz: 0,
           rot: Math.PI,
           isMoving: false,
           isSitting: true,
@@ -1099,11 +1107,24 @@ class SchoolScene3D {
     const char = this.characters.get(data.playerId);
     if (!char) return;
 
-    // Lưu tọa độ đích để nội suy Lerp mượt mà (chống giật lag khi mạng ping cao)
+    // Ghi nhận thời điểm nhận gói tin để kiểm soát timeout
+    char.lastMovePacketTime = Date.now();
     char.targetX = data.x;
     char.targetZ = data.z;
     char.targetRot = data.rot;
     char.isMoving = !!data.isMoving;
+
+    // Vận tốc để dự đoán chuyển động (Dead Reckoning - Yêu cầu 2.8)
+    if (data.vx !== undefined && data.vz !== undefined) {
+      char.vx = data.vx;
+      char.vz = data.vz;
+    } else if (char.isMoving && char.targetRot !== undefined) {
+      char.vx = Math.sin(char.targetRot) * 3.6;
+      char.vz = Math.cos(char.targetRot) * 3.6;
+    } else {
+      char.vx = 0;
+      char.vz = 0;
+    }
 
     if (data.isSitting !== undefined && data.isSitting !== char.isSitting) {
       if (data.isSitting) {
@@ -1261,17 +1282,50 @@ class SchoolScene3D {
     // 2. Di chuyển nhân vật của chính mình (Yêu cầu 1.7)
     this.updateMyPlayerMovement(delta);
 
-    // 3. Nhân vật & Nội suy Lerp cho người chơi từ xa
+    // 3. Nhân vật & Nội suy Lerp + Dead Reckoning cho người chơi từ xa (Yêu cầu 2.8: Triệt tiêu khựng lag)
     for (const [id, char] of this.characters.entries()) {
-      if (id !== this.myPlayerId && !char.isSitting && char.targetX !== undefined) {
-        char.group.position.x += (char.targetX - char.group.position.x) * Math.min(1.0, 14 * delta);
-        char.group.position.z += (char.targetZ - char.group.position.z) * Math.min(1.0, 14 * delta);
-        char.group.position.y = 0.02;
-        if (char.targetRot !== undefined) {
-          let diff = char.targetRot - char.group.rotation.y;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          char.group.rotation.y += diff * Math.min(1.0, 14 * delta);
+      if (id !== this.myPlayerId && !char.isSitting) {
+        // Hết hạn packet nếu quá 450ms không có dữ liệu mới -> Tự động dừng bước
+        if (char.isMoving && Date.now() - (char.lastMovePacketTime || 0) > 450) {
+          char.isMoving = false;
+          char.vx = 0;
+          char.vz = 0;
+        }
+
+        // Dead Reckoning: Tự động tiếp tục đẩy vị trí mục tiêu theo vận tốc trong lúc chờ packet tiếp theo
+        // Điều này đảm bảo tốc độ di chuyển đều đặn liên tục, loại bỏ hoàn toàn độ trễ và khựng giật theo nhịp
+        if (char.isMoving && (char.vx || char.vz)) {
+          char.targetX = (char.targetX !== undefined ? char.targetX : char.group.position.x) + char.vx * delta;
+          char.targetZ = (char.targetZ !== undefined ? char.targetZ : char.group.position.z) + char.vz * delta;
+
+          // Giới hạn trong phạm vi phòng học
+          char.targetX = Math.max(-7.2, Math.min(7.2, char.targetX));
+          char.targetZ = Math.max(-2.5, Math.min(7.8, char.targetZ));
+        }
+
+        if (char.targetX !== undefined) {
+          const dx = char.targetX - char.group.position.x;
+          const dz = char.targetZ - char.group.position.z;
+          const distSq = dx * dx + dz * dz;
+
+          if (distSq > 9.0) {
+            // Lệch quá xa (>3m do lag mạng), snap ngay lập tức
+            char.group.position.x = char.targetX;
+            char.group.position.z = char.targetZ;
+          } else {
+            // Nội suy siêu mượt với hệ số lerp 18 * delta bám sát vị trí liên tục
+            const lerpFactor = Math.min(1.0, 18 * delta);
+            char.group.position.x += dx * lerpFactor;
+            char.group.position.z += dz * lerpFactor;
+          }
+          char.group.position.y = 0.02;
+
+          if (char.targetRot !== undefined) {
+            let diff = char.targetRot - char.group.rotation.y;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            char.group.rotation.y += diff * Math.min(1.0, 16 * delta);
+          }
         }
       }
       char.update(delta);

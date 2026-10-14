@@ -1580,23 +1580,27 @@ io.on('connection', (socket) => {
     broadcastRoom(currentRoom);
   });
 
-  // 14. Di chuyển nhân vật ở sảnh chờ (Yêu cầu 1.7)
+  // 14. Di chuyển nhân vật ở sảnh chờ (Yêu cầu 1.7 & 2.8)
   socket.on('player_move', (data) => {
     if (!currentRoom || !playerObj) return;
     if (currentRoom.state !== 'LOBBY') return;
 
     playerObj.x = data.x;
     playerObj.z = data.z;
+    playerObj.vx = data.vx || 0;
+    playerObj.vz = data.vz || 0;
     playerObj.rot = data.rot;
     playerObj.isMoving = !!data.isMoving;
     playerObj.isSitting = !!data.isSitting;
     if (data.seatIndex !== undefined) playerObj.seatIndex = data.seatIndex;
 
-    // Broadcast tới tất cả người chơi khác trong phòng
+    // Broadcast tới tất cả người chơi khác trong phòng (kèm vận tốc để nội suy mượt Dead Reckoning)
     socket.to(currentRoom.code).emit('player_moved', {
       playerId: socket.id,
       x: data.x,
       z: data.z,
+      vx: playerObj.vx,
+      vz: playerObj.vz,
       rot: data.rot,
       isMoving: playerObj.isMoving,
       isSitting: playerObj.isSitting,
