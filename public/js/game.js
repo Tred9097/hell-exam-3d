@@ -67,6 +67,11 @@ function initSocket() {
     myPlayerId = socket.id;
     if (scene3d) scene3d.setMyPlayerId(myPlayerId);
     console.log('Connected with socket ID:', myPlayerId);
+    startPingInterval();
+  });
+
+  socket.on('client_pong', (clientTime) => {
+    handlePongResponse(clientTime);
   });
 
   // Nhận thông tin phòng cập nhật
@@ -333,11 +338,17 @@ function initSocket() {
     }
   });
 
-  // Phản ứng biểu cảm học sinh (Tự động dừng sau 3.0s, showEmoji tự kích hoạt triggerAnimation chuẩn)
+  // Phản ứng biểu cảm học sinh (Tự động dừng sau 3.0s, showEmoji tự kích hoạt triggerAnimation chuẩn & âm thanh sống động)
   socket.on('player_reaction', ({ playerId, emoji }) => {
     const char = scene3d.characters.get(playerId);
     if (char) {
       char.showEmoji(emoji, 3.0);
+    }
+    if (window.audioMgr) {
+      if (emoji === '🎉') window.audioMgr.playCheer();
+      else if (emoji === '😭') window.audioMgr.playCry();
+      else if (emoji === '🙏') window.audioMgr.playPray();
+      else if (emoji === '😵') window.audioMgr.playDizzy();
     }
   });
 
@@ -347,6 +358,40 @@ function initSocket() {
     const char = scene3d.characters.get(playerId);
     if (char) char.showChat(text, 3.5);
   });
+}
+
+// --- KIỂM TRA ĐỘ TRỄ MẠNG (PING / PONG RTT - YÊU CẦU 3.0) ---
+let pingIntervalId = null;
+
+function startPingInterval() {
+  if (pingIntervalId) clearInterval(pingIntervalId);
+  if (socket && socket.connected) {
+    socket.emit('client_ping', Date.now());
+  }
+  pingIntervalId = setInterval(() => {
+    if (socket && socket.connected) {
+      socket.emit('client_ping', Date.now());
+    }
+  }, 4000);
+}
+
+function handlePongResponse(clientTime) {
+  const rtt = Math.max(1, Date.now() - (clientTime || Date.now()));
+  const pingBadge = document.getElementById('header-ping-badge');
+  const pingText = document.getElementById('header-ping-text');
+  if (pingBadge && pingText) {
+    pingBadge.classList.remove('hidden');
+    pingBadge.classList.add('flex');
+    pingText.innerText = `${rtt}ms`;
+
+    if (rtt < 80) {
+      pingBadge.className = 'font-mono text-[10px] sm:text-xs text-emerald-400 font-bold flex items-center space-x-0.5';
+    } else if (rtt < 180) {
+      pingBadge.className = 'font-mono text-[10px] sm:text-xs text-yellow-400 font-bold flex items-center space-x-0.5';
+    } else {
+      pingBadge.className = 'font-mono text-[10px] sm:text-xs text-orange-400 font-bold flex items-center space-x-0.5';
+    }
+  }
 }
 
 function init3DScene() {
@@ -1813,25 +1858,55 @@ function initCharacterSystem() {
     });
   };
 
-  // Render lưới model nhân vật 3D (Yêu cầu 2.3: Thấy rõ đầu và thân, cho phép scroll down)
+  let wardrobeSearchQuery = '';
+
+  // Render lưới model nhân vật 3D (Yêu cầu 2.3 & 3.0: 4 hàng trọn vẹn, có icon + tên tiếng Việt, hỗ trợ tìm kiếm)
   const renderWardrobeGrid = () => {
     if (!wardrobeGridEl || !window.CHARACTER_SKINS) return;
 
-    wardrobeGridEl.innerHTML = window.CHARACTER_SKINS.map(skin => {
+    let skins = window.CHARACTER_SKINS;
+    if (wardrobeSearchQuery) {
+      skins = skins.filter(s => 
+        (s.name && s.name.toLowerCase().includes(wardrobeSearchQuery)) || 
+        (s.id && s.id.toLowerCase().includes(wardrobeSearchQuery))
+      );
+    }
+
+    const countBadge = document.getElementById('wardrobe-count-badge');
+    if (countBadge) {
+      countBadge.innerText = `${skins.length} / 52`;
+    }
+
+    if (skins.length === 0) {
+      wardrobeGridEl.innerHTML = `
+        <div class="col-span-4 py-16 text-center text-slate-400 font-bold text-xs flex flex-col items-center justify-center space-y-2">
+          <span class="text-2xl">🔍</span>
+          <span>Không tìm thấy nhân vật nào khớp với "${wardrobeSearchQuery}"</span>
+        </div>
+      `;
+      return;
+    }
+
+    wardrobeGridEl.innerHTML = skins.map(skin => {
       const isSelected = skin.id === tempWardrobeSkinId;
       return `
         <button type="button" 
-                class="wardrobe-skin-card p-1 sm:p-2 rounded-2xl border text-center transition flex flex-col items-center justify-center cursor-pointer group relative overflow-hidden h-28 sm:h-32 min-h-[110px] sm:min-h-[125px] ${
+                class="wardrobe-skin-card p-1 sm:p-1.5 rounded-2xl border text-center transition flex flex-col items-center justify-between cursor-pointer group relative overflow-hidden h-28 sm:h-32 min-h-[110px] sm:min-h-[124px] ${
                   isSelected 
                     ? 'bg-amber-500/25 border-yellow-400 ring-2 ring-yellow-400 shadow-xl shadow-yellow-500/20 scale-105' 
                     : 'bg-slate-900/90 border-slate-800 hover:bg-slate-800 hover:border-slate-700 hover:scale-105'
                 }" 
                 data-skin-id="${skin.id}" 
-                title="${skin.id}">
-          <img src="/images/characters/${skin.id}.png" 
-               alt="${skin.id}" 
-               loading="lazy" 
-               class="w-full h-full object-contain filter drop-shadow-md group-hover:scale-110 transition duration-200 pointer-events-none">
+                title="${skin.name} (${skin.id})">
+          <div class="flex-1 w-full min-h-0 flex items-center justify-center p-0.5 pointer-events-none">
+            <img src="/images/characters/${skin.id}.png" 
+                 alt="${skin.name}" 
+                 loading="lazy" 
+                 class="max-w-full max-h-full object-contain filter drop-shadow-md group-hover:scale-110 transition duration-200 pointer-events-none">
+          </div>
+          <span class="text-[9px] sm:text-[10px] font-bold text-slate-300 group-hover:text-yellow-300 truncate w-full block mt-0.5 pointer-events-none text-center leading-tight">
+            ${skin.icon} ${skin.name}
+          </span>
         </button>
       `;
     }).join('');
@@ -1841,6 +1916,9 @@ function initCharacterSystem() {
         tempWardrobeSkinId = card.dataset.skinId;
         if (wardrobePreviewViewer) {
           wardrobePreviewViewer.setCharacter(tempWardrobeSkinId, tempWardrobeSkinColor, tempWardrobeFaceColor);
+          if (wardrobePreviewViewer.playGesture) {
+            wardrobePreviewViewer.playGesture('Victory');
+          }
         }
         renderWardrobeGrid();
         if (window.audioMgr) window.audioMgr.playClick();
@@ -1848,10 +1926,20 @@ function initCharacterSystem() {
     });
   };
 
+  // Ô tìm kiếm nhân vật nhanh trong phòng thay đồ (Yêu cầu 3.0)
+  document.getElementById('wardrobe-search-input')?.addEventListener('input', (e) => {
+    wardrobeSearchQuery = (e.target.value || '').trim().toLowerCase();
+    renderWardrobeGrid();
+  });
+
   const openWardrobe = () => {
     tempWardrobeSkinId = selectedSkinId;
     tempWardrobeSkinColor = selectedSkinColor;
     tempWardrobeFaceColor = selectedFaceColor;
+    wardrobeSearchQuery = '';
+
+    const searchInput = document.getElementById('wardrobe-search-input');
+    if (searchInput) searchInput.value = '';
 
     if (wardrobeModal) {
       wardrobeModal.classList.remove('hidden');

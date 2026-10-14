@@ -1585,6 +1585,11 @@ io.on('connection', (socket) => {
     broadcastRoom(currentRoom);
   });
 
+  // 13B. Kiểm tra độ trễ mạng (Ping / Pong RTT - Yêu cầu 3.0)
+  socket.on('client_ping', (clientTime) => {
+    socket.emit('client_pong', clientTime);
+  });
+
   // 14. Di chuyển nhân vật ở sảnh chờ (Yêu cầu 1.7 & 2.8)
   socket.on('player_move', (data) => {
     if (!currentRoom || !playerObj) return;

@@ -382,6 +382,123 @@ class AudioManager {
     noiseGain.connect(this.ctx.destination);
     noise.start(now);
   }
+
+  // 9. Âm thanh biểu cảm Ăn Mừng 🎉 (Yêu cầu 3.0: Chuỗi chuông vui nhộn)
+  playCheer() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    notes.forEach((freq, idx) => {
+      const delay = idx * 0.08;
+      const noteTime = this.ctx.currentTime + delay;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, noteTime);
+
+      gain.gain.setValueAtTime(0.001, noteTime);
+      gain.gain.linearRampToValueAtTime(0.28, noteTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(noteTime);
+      osc.stop(noteTime + 0.4);
+    });
+  }
+
+  // 10. Âm thanh biểu cảm Khóc Gục 😭 (Yêu cầu 3.0: Kèn trombone hài hước ảo não)
+  playCry() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const notes = [311.13, 293.66, 277.18, 261.63]; // Eb4 -> D4 -> C#4 -> C4
+    notes.forEach((freq, idx) => {
+      const delay = idx * 0.16;
+      const noteTime = this.ctx.currentTime + delay;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, noteTime);
+      if (idx === notes.length - 1) {
+        osc.frequency.exponentialRampToValueAtTime(175, noteTime + 0.45);
+      }
+
+      const dur = idx === notes.length - 1 ? 0.5 : 0.14;
+      gain.gain.setValueAtTime(0.001, noteTime);
+      gain.gain.linearRampToValueAtTime(0.18, noteTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + dur);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(650, noteTime);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(noteTime);
+      osc.stop(noteTime + dur + 0.05);
+    });
+  }
+
+  // 11. Âm thanh biểu cảm Cầu May 🙏 (Yêu cầu 3.0: Chuông thiền Zen thanh tịnh)
+  playPray() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    [432, 864].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const vol = idx === 0 ? 0.25 : 0.12;
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(vol, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.25);
+    });
+  }
+
+  // 12. Âm thanh biểu cảm Đo Ván 😵 (Yêu cầu 3.0: Tiếng choáng váng lò xo ngộ nghĩnh)
+  playDizzy() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(320, now);
+    for (let i = 0; i < 4; i++) {
+      const t = now + i * 0.12;
+      osc.frequency.linearRampToValueAtTime(460, t + 0.06);
+      osc.frequency.linearRampToValueAtTime(240, t + 0.12);
+    }
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.6);
+  }
 }
 
 // Khởi tạo đối tượng toàn cục

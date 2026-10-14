@@ -958,14 +958,38 @@ class CharacterPreviewViewer {
     this.setFaceColor(this.currentFaceColor);
 
     // Chạy animation Idle
+    this.animations = data.animations || [];
     this.mixer = new THREE.AnimationMixer(model);
-    if (data.animations && data.animations.length > 0) {
-      const idleClip = data.animations.find(a => a.name === 'Idle') || data.animations[0];
+    if (this.animations.length > 0) {
+      const idleClip = this.animations.find(a => a.name === 'Idle') || this.animations[0];
       if (idleClip) {
         const act = this.mixer.clipAction(idleClip);
         act.play();
       }
     }
+  }
+
+  // Phát hoạt ảnh chào mừng / biểu cảm vui nhộn khi chọn nhân vật (Yêu cầu 3.0)
+  playGesture(animName = 'Victory') {
+    if (!this.mixer || !this.animations || !this.animations.length) return;
+    const clip = this.animations.find(a => a.name.toLowerCase() === animName.toLowerCase()) || 
+                 this.animations.find(a => a.name === 'Victory' || a.name === 'Jump');
+    if (!clip) return;
+
+    const action = this.mixer.clipAction(clip);
+    action.reset();
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = false;
+    action.fadeIn(0.15).play();
+
+    setTimeout(() => {
+      action.fadeOut(0.25);
+      const idleClip = this.animations.find(a => a.name === 'Idle') || this.animations[0];
+      if (idleClip) {
+        const idle = this.mixer.clipAction(idleClip);
+        idle.reset().fadeIn(0.25).play();
+      }
+    }, (clip.duration || 1.5) * 1000);
   }
 
   loadCharacter(modelId, skinColor, faceColor) {
