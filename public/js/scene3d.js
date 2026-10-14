@@ -1020,6 +1020,8 @@ class SchoolScene3D {
     if (myChar.isSitting) {
       // Đang ngồi -> Đứng dậy
       myChar.setSitting(false);
+      this.cameraMode = 'STAND_FOLLOW';
+      this.standingCameraIndex = 0;
       if (this.onSeatInteracted) this.onSeatInteracted(false, myChar.sittingSeatIndex);
       if (this.onMyMoveCallback) {
         this.onMyMoveCallback({
@@ -1035,6 +1037,8 @@ class SchoolScene3D {
       // Đang đứng gần ghế -> Ngồi xuống
       const seat = this.nearbySeat;
       myChar.setSitting(true, seat.pos, seat.seatIndex);
+      this.cameraMode = 'PRESET';
+      this.currentPresetIndex = 2; // Bàn của tôi
       if (this.onSeatInteracted) this.onSeatInteracted(true, seat.seatIndex);
       if (this.onMyMoveCallback) {
         this.onMyMoveCallback({
@@ -1107,9 +1111,18 @@ class SchoolScene3D {
       // OVERVIEW / LOBBY Follow mode
       if (this.myPlayerId && this.characters.has(this.myPlayerId)) {
         const char = this.characters.get(this.myPlayerId);
-        const p = char.group.position;
-        this.camTargetPos.set(p.x, p.y + 2.5, p.z + 3.8);
-        this.camTargetLookAt.set(p.x, p.y + 0.8, p.z);
+        if (char && !char.isSitting) {
+          this.cameraMode = 'STAND_FOLLOW';
+          this.standingCameraIndex = 0;
+          const cp = char.group.position;
+          this.camTargetPos.set(cp.x, cp.y + 2.5, cp.z + 3.8);
+          this.camTargetLookAt.set(cp.x, cp.y + 0.8, cp.z);
+        } else {
+          this.cameraMode = 'PRESET';
+          this.currentPresetIndex = 0;
+          this.camTargetPos.set(0, 5.2, 9.8);
+          this.camTargetLookAt.set(0, 1.2, -1.0);
+        }
       } else {
         this.camTargetPos.set(0, 5.2, 9.8);
         this.camTargetLookAt.set(0, 1.2, -1.0);
@@ -1117,10 +1130,36 @@ class SchoolScene3D {
     }
   }
 
-  // NÚT ĐỔI GÓC NHÌN (CAMERA PRESETS CYCLING)
+  // NÚT ĐỔI GÓC NHÌN (CAMERA PRESETS CYCLING - YÊU CẦU 2.6)
   cycleCameraView(myPlayerId = null) {
     this.lastUserDragTime = 0;
-    this.currentPresetIndex = (this.currentPresetIndex + 1) % 4;
+    const targetId = this.myPlayerId || myPlayerId;
+    const myChar = targetId ? this.characters.get(targetId) : null;
+
+    // YÊU CẦU 2.6: Khi đứng dậy, chỉ có 2 góc nhìn: Bảng đen và Vị trí hiện tại
+    if (myChar && !myChar.isSitting) {
+      if (this.standingCameraIndex === undefined) {
+        this.standingCameraIndex = 0;
+      }
+      this.standingCameraIndex = (this.standingCameraIndex + 1) % 2;
+
+      if (this.standingCameraIndex === 1) {
+        this.cameraMode = 'BLACKBOARD';
+        this.camTargetPos.set(0, 2.5, 1.8);
+        this.camTargetLookAt.set(0, 2.2, -3.2);
+        return 'Cận Cảnh Bảng Đen';
+      } else {
+        this.cameraMode = 'STAND_FOLLOW';
+        const cp = myChar.group.position;
+        this.camTargetPos.set(cp.x, cp.y + 2.5, cp.z + 3.8);
+        this.camTargetLookAt.set(cp.x, cp.y + 0.8, cp.z);
+        return 'Vị Trí Hiện Tại';
+      }
+    }
+
+    // Khi ngồi ghế: chuyển qua 4 góc nhìn chuẩn phòng thi
+    this.cameraMode = 'PRESET';
+    this.currentPresetIndex = ((this.currentPresetIndex || 0) + 1) % 4;
 
     let viewName = 'Toàn Cảnh Lớp Học';
     switch (this.currentPresetIndex) {
@@ -1135,8 +1174,8 @@ class SchoolScene3D {
         viewName = 'Cận Cảnh Bảng Đen';
         break;
       case 2: // Bàn của tôi
-        if (myPlayerId) {
-          const pos = this.getCharacterWorldPosition(myPlayerId);
+        if (targetId) {
+          const pos = this.getCharacterWorldPosition(targetId);
           this.camTargetPos.set(pos.x, pos.y + 0.9, pos.z + 1.8);
           this.camTargetLookAt.set(pos.x, pos.y, -3.2);
         } else {
@@ -1274,12 +1313,14 @@ class SchoolScene3D {
       const y = this.camCurrentLookAt.y + this.cameraDistance * Math.cos(this.polarAngle);
       const z = this.camCurrentLookAt.z + this.cameraDistance * Math.sin(this.polarAngle) * Math.cos(this.azimuthAngle);
       this.camTargetPos.set(x, Math.max(1.2, y), z);
-    } else if (this.cameraMode === 'OVERVIEW' && this.myPlayerId && this.characters.has(this.myPlayerId)) {
-      // Yêu cầu 1.7: Camera đi theo cố định sau lưng nhân vật khi di chuyển ở sảnh chờ
+    } else if (this.cameraMode === 'STAND_FOLLOW' || (this.cameraMode === 'OVERVIEW' && this.myPlayerId && this.characters.has(this.myPlayerId))) {
+      // Yêu cầu 1.7 & 2.6: Camera đi theo cố định sau lưng nhân vật khi đang đứng/di chuyển ở vị trí hiện tại
       const myChar = this.characters.get(this.myPlayerId);
-      const cp = myChar.group.position;
-      this.camTargetPos.set(cp.x, cp.y + 2.5, cp.z + 3.8);
-      this.camTargetLookAt.set(cp.x, cp.y + 0.8, cp.z);
+      if (myChar && !myChar.isSitting) {
+        const cp = myChar.group.position;
+        this.camTargetPos.set(cp.x, cp.y + 2.5, cp.z + 3.8);
+        this.camTargetLookAt.set(cp.x, cp.y + 0.8, cp.z);
+      }
     }
 
     // Camera di chuyển êm mượt (Lerp)

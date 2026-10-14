@@ -782,6 +782,10 @@ function hideAllPhaseOverlays() {
   ids.forEach(id => {
     document.getElementById(id)?.classList.add('hidden');
   });
+
+  // YÊU CẦU 2.6: Ẩn nút tương tác cảm ứng di động và cửa sổ nổi khi vào các giai đoạn chọn bài thi & thi đấu
+  document.getElementById('btn-touch-interact')?.classList.add('hidden');
+  document.getElementById('interaction-prompt')?.classList.add('hidden');
 }
 
 function renderPlayerList(players) {
@@ -1300,6 +1304,7 @@ function bindUIEvents() {
       if (res.success) {
         showToast(`Tạo phòng thành công! Mã phòng: ${res.roomCode}`);
         document.getElementById('start-screen-modal')?.classList.add('hidden');
+        document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
       }
     });
@@ -1320,6 +1325,7 @@ function bindUIEvents() {
       if (res.success) {
         showToast(`Đã vào phòng ${res.roomCode}!`);
         document.getElementById('start-screen-modal')?.classList.add('hidden');
+        document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
       } else {
         alert(res.message);
@@ -1638,8 +1644,7 @@ function bindUIEvents() {
   // 13. Nút Đổi Góc Nhìn Camera (Camera Presets Cycler)
   document.getElementById('btn-cycle-camera')?.addEventListener('click', () => {
     if (scene3d) {
-      const viewName = scene3d.cycleCameraView(myPlayerId);
-      showToast(`🎥 Góc nhìn: ${viewName}`);
+      scene3d.cycleCameraView(myPlayerId);
       if (window.audioMgr) window.audioMgr.playClick();
     }
   });
@@ -1925,24 +1930,14 @@ function showToast(msg) {
 }
 
 function showBannerToast(msg) {
-  const banner = document.createElement('div');
-  banner.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-rose-600 text-white font-extrabold px-6 py-2 rounded-full border-2 border-white shadow-2xl animate-bounce';
-  banner.innerText = msg;
-  document.body.appendChild(banner);
-  setTimeout(() => banner.remove(), 3500);
+  // YÊU CẦU 2.6: Loại bỏ cửa sổ nổi màu đỏ, hiển thị thông báo ngắn trực tiếp vào thanh chat lớp học
+  addChatMessage('🔔 HỆ THỐNG', msg);
 }
 
 function showAnnouncementModal(title, msg) {
-  const modal = document.getElementById('announcement-modal');
-  const titleEl = document.getElementById('announcement-title');
-  const msgEl = document.getElementById('announcement-msg');
-
-  if (modal && titleEl && msgEl) {
-    titleEl.innerText = title;
-    msgEl.innerText = msg;
-    modal.classList.remove('hidden');
-    setTimeout(() => modal.classList.add('hidden'), 3000);
-  }
+  // YÊU CẦU 2.6: Thay vì hiện modal nổi màu đỏ, hiển thị thông báo vào thanh chat lớp học
+  const header = title ? `📢 ${title}` : '📢 THÔNG BÁO';
+  addChatMessage(header, msg);
 }
 
 function addChatMessage(name, text, isSelf) {
@@ -2160,22 +2155,18 @@ function setupMovementControls() {
 function updateInteractionPromptUI(prompt) {
   const isMobile = isMobileOrTouchDevice();
   const promptEl = document.getElementById('interaction-prompt');
-  const promptText = document.getElementById('interaction-prompt-text');
   const touchBtn = document.getElementById('btn-touch-interact');
   const touchIcon = document.getElementById('touch-interact-icon');
   const touchLabel = document.getElementById('touch-interact-label');
 
-  if (prompt) {
-    if (promptEl) {
-      promptEl.classList.remove('hidden');
-      if (promptText) {
-        promptText.innerText = isMobile 
-          ? (prompt.type === 'stand' ? 'Chạm để Đứng dậy' : 'Chạm để Ngồi vào bàn')
-          : prompt.text;
-      }
-    }
+  // YÊU CẦU 2.6: Loại bỏ hoàn toàn 2 cửa sổ nổi "chạm để ngồi vào bàn / đứng dậy" và "Ngồi vào ghế (E) / Đứng dậy (E)"
+  if (promptEl) promptEl.classList.add('hidden');
 
-    // YÊU CẦU 1.8: Nút ngồi xuống / đứng dậy CHỈ hiển thị khi người chơi dùng điện thoại, trên PC thì ẩn
+  // YÊU CẦU 2.6: Ở giao diện sảnh của người chơi điện thoại, chỉ hiện nút ngồi xuống khi đang ở sảnh (LOBBY).
+  // Khi bắt đầu chọn bài thi và thi, luôn ẩn nút này.
+  const isLobby = currentRoom && currentRoom.state === 'LOBBY';
+
+  if (prompt && isLobby) {
     if (touchBtn) {
       if (isMobile) {
         touchBtn.classList.remove('hidden');
@@ -2191,7 +2182,6 @@ function updateInteractionPromptUI(prompt) {
       }
     }
   } else {
-    if (promptEl) promptEl.classList.add('hidden');
     if (touchBtn) touchBtn.classList.add('hidden');
   }
 }

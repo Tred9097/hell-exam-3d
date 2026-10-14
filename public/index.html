@@ -105,52 +105,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Banner kết nối mạng LAN / Wi-Fi (Yêu cầu 1.8: Đọc địa chỉ PC máy chủ thực sự) -->
-        <!-- Banner kết nối Online toàn cầu (Cloudflare Tunnel - Khác mạng / 4G / Bất kỳ đâu) -->
-        <div id="online-tunnel-box" class="hidden mb-2 p-2 rounded-xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/40 text-left text-xs">
-          <div class="flex items-center justify-between text-emerald-300 mb-1">
-            <span class="flex items-center space-x-1 font-bold">
-              <span>🌐</span>
-              <span>Chơi Online (Khác mạng / 4G / Ở xa):</span>
-            </span>
-            <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-black border border-emerald-500/30">
-              HTTPS
-            </span>
-          </div>
-          <div class="flex items-center justify-between gap-1.5 bg-slate-950/80 p-1.5 rounded-lg border border-emerald-900/60">
-            <div class="truncate text-emerald-300 text-[11px] flex-1">
-              Link: <a id="online-server-url" href="#" target="_blank" class="text-emerald-400 font-mono underline font-bold tracking-tight">Đang kết nối...</a>
-            </div>
-            <button id="btn-copy-online-url" type="button" class="shrink-0 px-2 py-1 rounded-md bg-emerald-800/80 hover:bg-emerald-700 active:scale-95 text-white text-[10px] font-bold border border-emerald-600 flex items-center space-x-1 transition cursor-pointer" title="Sao chép link Online">
-              <span>📋</span>
-              <span>Sao chép</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Banner kết nối Wi-Fi / Hotspot nội bộ -->
-        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-left text-xs">
-          <div class="flex items-center justify-between text-slate-400 mb-1">
-            <span class="flex items-center space-x-1 font-bold">
-              <span id="lan-connection-icon">📶</span>
-              <span id="lan-connection-label">Chơi chung Wi-Fi / Hotspot:</span>
-            </span>
-            <span id="server-pc-name-badge" class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
-              PC: Đang đọc...
-            </span>
-          </div>
-          <div class="flex items-center justify-between gap-1.5 bg-slate-950/70 p-1.5 rounded-lg border border-slate-800/80">
-            <div class="truncate text-slate-300 text-[11px] flex-1">
-              Link: <a id="lan-server-url" href="#" target="_blank" class="text-sky-400 font-mono underline font-bold tracking-tight">Đang đọc địa chỉ PC...</a>
-            </div>
-            <button id="btn-copy-lan-url" type="button" class="shrink-0 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 active:scale-95 text-yellow-400 text-[10px] font-bold border border-slate-700 flex items-center space-x-1 transition cursor-pointer" title="Sao chép link truy cập">
-              <span>📋</span>
-              <span>Sao chép</span>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -721,7 +675,7 @@
   </div>
 
   <!-- 12. KHU VỰC GÓC DƯỚI BÊN PHẢI: KHUNG CHAT & HÀNG NÚT CẢM XÚC -->
-  <div class="fixed bottom-2 sm:bottom-3 right-2 sm:right-3 z-50 flex flex-col items-end space-y-1.5 sm:space-y-2 pointer-events-auto max-w-[calc(100vw-16px)] sm:max-w-sm">
+  <div id="chat-and-emotes-wrapper" class="hidden fixed bottom-2 sm:bottom-3 right-2 sm:right-3 z-50 flex flex-col items-end space-y-1.5 sm:space-y-2 pointer-events-auto max-w-[calc(100vw-16px)] sm:max-w-sm">
     
     <!-- Khung Chat Thu Gọn / Mở Rộng -->
     <div id="chat-container-collapsible" class="flex flex-col items-end space-y-1.5 transition-all">
@@ -742,7 +696,7 @@
       <!-- Ô nhập tin nhắn -->
       <div class="flex items-center space-x-1.5 w-60 sm:w-80">
         <input id="chat-input-text" type="text" placeholder="Nói chuyện trong lớp..." maxlength="70" class="flex-1 px-3 py-1.5 sm:py-2 rounded-xl bg-slate-900/90 border border-slate-700 text-xs sm:text-sm text-white focus:outline-none focus:border-yellow-400 shadow-inner">
-        <button id="btn-send-chat" class="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-black active:scale-95 transition shadow-md shadow-blue-600/30">Gửi</button>
+        <button id="btn-send-chat" class="hidden sm:inline-block px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-black active:scale-95 transition shadow-md shadow-blue-600/30 shrink-0">Gửi</button>
       </div>
     </div>
 
