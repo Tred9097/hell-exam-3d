@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Kì Thi Địa Ngục (Hell Exam) - 3D Vietnamese School Party Game v1.3</title>
   
+  <!-- Favicon / Logo Web (Yêu cầu 3.1) -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.svg">
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -831,21 +835,10 @@
           </div>
         </div>
 
-        <!-- CỘT PHẢI (RIGHT PANEL: 7 cols): Danh sách Model 3D Quaternius (Yêu cầu 3.0: Mở rộng thêm 1 hàng thành 4 hàng trọn vẹn) -->
-        <div class="md:col-span-7 flex flex-col min-h-0 space-y-2">
-          <!-- Thanh tìm kiếm & bộ lọc danh mục (Yêu cầu 3.0) -->
-          <div class="flex items-center space-x-2">
-            <div class="relative flex-1">
-              <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 text-xs">🔍</span>
-              <input id="wardrobe-search-input" type="text" placeholder="Tìm theo tên nhân vật..." class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-xs focus:outline-none focus:border-yellow-400 placeholder:text-slate-500">
-            </div>
-            <div id="wardrobe-count-badge" class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-mono font-bold text-yellow-400 shrink-0 select-none">
-              52 nhân vật
-            </div>
-          </div>
-
-          <!-- Lưới 52 Model Nhân vật 3D (Yêu cầu 3.0: Chiều cao tối ưu vừa vặn 4 hàng, scroll mượt mà) -->
-          <div id="wardrobe-skins-grid" class="grid grid-cols-4 gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 overflow-y-auto h-[490px] sm:h-[530px] max-h-[66vh] scrollbar-thin">
+        <!-- CỘT PHẢI (RIGHT PANEL: 7 cols): Danh sách Model 3D Quaternius (Yêu cầu 3.1: Bỏ thanh tìm kiếm và tên, mở rộng không gian 4 hàng) -->
+        <div class="md:col-span-7 flex flex-col min-h-0">
+          <!-- Lưới 52 Model Nhân vật 3D (Yêu cầu 3.1: Chiều cao tối ưu 4 hàng trọn vẹn, không vướng thanh tìm kiếm) -->
+          <div id="wardrobe-skins-grid" class="grid grid-cols-4 gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 overflow-y-auto h-[520px] sm:h-[560px] max-h-[72vh] scrollbar-thin">
             <!-- Render động bởi game.js -->
           </div>
         </div>
@@ -865,9 +858,9 @@
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/audio.js?v=3.0"></script>
-  <script src="/js/characters.js?v=3.0"></script>
-  <script src="/js/scene3d.js?v=3.0"></script>
-  <script src="/js/game.js?v=3.0"></script>
+  <script src="/js/audio.js?v=3.1"></script>
+  <script src="/js/characters.js?v=3.1"></script>
+  <script src="/js/scene3d.js?v=3.1"></script>
+  <script src="/js/game.js?v=3.1"></script>
 </body>
 </html>

@@ -252,6 +252,18 @@ class SchoolScene3D {
 
     // 5. Cột cờ
     this.createFlagPole(-8.5, -8);
+
+    // 6. Kiếm cắm trong đá (Excalibur in Stone) bên trái ngoài phạm vi di chuyển (Yêu cầu 3.1)
+    this.createExcaliburInStone(-11.5, 2.0);
+
+    // 7. Tên lửa vũ trụ (Space Rocket) bên phải ngoài phạm vi di chuyển (Yêu cầu 3.1)
+    this.createGardenRocket(11.5, 2.0);
+
+    // 8. Vài chú chim nhỏ đậu trên tường lớp học & bảng đen (Yêu cầu 3.1)
+    this.createWallBirds();
+
+    // 9. Người ngoài hành tinh đứng dựa tường tạo dáng meme kinh điển (Yêu cầu 3.1)
+    this.createWallLeaningAlien(-4.9, -3.0);
   }
 
   createSchoolTree(x, z, hasRedFlowers = true) {
@@ -466,7 +478,163 @@ class SchoolScene3D {
       group.add(chairGroup);
     });
 
+    // 7. Đồ dùng học sinh: Hộp bút & Cặp sách/Balo (Yêu cầu 3.1)
+    this.addDeskStationeryAndBags(group, deskIndex);
+
     return group;
+  }
+
+  addDeskStationeryAndBags(group, deskIndex) {
+    // 1. HỘP BÚT HỌC SINH TRÊN BÀN (Yêu cầu 3.1: Màu sắc đa dạng, bố trí tự nhiên)
+    const caseColors = [0x2563eb, 0xdc2626, 0x16a34a, 0xd97706, 0x9333ea, 0xdb2777];
+
+    const createPencilCase = (color, xPos, zPos, rotY = 0) => {
+      const caseGroup = new THREE.Group();
+      caseGroup.position.set(xPos, 0.785, zPos);
+      caseGroup.rotation.y = rotY;
+
+      // Thân hộp bút bo mềm
+      const caseMat = new THREE.MeshLambertMaterial({ color });
+      const caseBody = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.045, 0.09), caseMat);
+      caseBody.position.y = 0.022;
+      caseBody.castShadow = true;
+      caseGroup.add(caseBody);
+
+      // Dây khóa kéo trên đỉnh
+      const zipMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.8, roughness: 0.2 });
+      const zip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.006, 0.012), zipMat);
+      zip.position.y = 0.046;
+      caseGroup.add(zip);
+
+      // Đầu kéo khóa
+      const puller = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.012, 0.025), zipMat);
+      puller.position.set(-0.10, 0.046, 0);
+      caseGroup.add(puller);
+
+      return caseGroup;
+    };
+
+    // Thước kẻ nhựa trong
+    const createRuler = (xPos, zPos, rotY = 0) => {
+      const rulerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, roughness: 0.1 });
+      const ruler = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.003, 0.035), rulerMat);
+      ruler.position.set(xPos, 0.784, zPos);
+      ruler.rotation.y = rotY;
+      return ruler;
+    };
+
+    // Cục gôm tẩy trắng
+    const createEraser = (xPos, zPos, rotY = 0) => {
+      const eraserMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
+      const eraser = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.022, 0.03), eraserMat);
+      eraser.position.set(xPos, 0.795, zPos);
+      eraser.rotation.y = rotY;
+      return eraser;
+    };
+
+    // Đặt hộp bút theo từng bàn khác nhau
+    if (deskIndex === 0) {
+      group.add(createPencilCase(caseColors[0], -0.35, 0.10, 0.18));
+    } else if (deskIndex === 1) {
+      group.add(createPencilCase(caseColors[1], 0.35, -0.08, -0.15));
+      group.add(createRuler(0.38, 0.12, 0.05));
+    } else if (deskIndex === 2) {
+      group.add(createPencilCase(caseColors[2], -0.34, 0.10, 0.12));
+      group.add(createPencilCase(caseColors[5], 0.36, -0.09, -0.2));
+    } else if (deskIndex === 3) {
+      group.add(createPencilCase(caseColors[3], -0.35, -0.09, -0.12));
+      group.add(createEraser(-0.35, 0.10, 0.25));
+    } else if (deskIndex === 4) {
+      group.add(createPencilCase(caseColors[4], 0.35, 0.08, 0.22));
+    } else {
+      group.add(createPencilCase(caseColors[0], -0.34, 0.11, 0.15));
+      group.add(createPencilCase(caseColors[1], 0.35, -0.08, -0.18));
+      group.add(createRuler(-0.35, -0.09, 0));
+    }
+
+    // 2. CẶP SÁCH / BALO HỌC SINH (Yêu cầu 3.1: Treo bên hông ghế hoặc đặt dưới đất cạnh chân bàn)
+    if (deskIndex === 0) {
+      // Đặt dưới đất cạnh chân bàn bên trái, hơi nghiêng tựa vào chân bàn
+      const bag = this.buildBackpackMesh(0x1e3a8a, 0xef4444);
+      bag.position.set(-0.96, 0.19, 0.05);
+      bag.rotation.set(0, 0.1, 0.16);
+      group.add(bag);
+    } else if (deskIndex === 1) {
+      // Treo bên hông ghế bên phải
+      const bag = this.buildBackpackMesh(0x991b1b, 0xfef08a);
+      bag.position.set(0.88, 0.38, 0.72);
+      bag.rotation.y = Math.PI / 2;
+      group.add(bag);
+    } else if (deskIndex === 2) {
+      // Đặt dưới đất cạnh chân bàn bên phải
+      const bag = this.buildBackpackMesh(0x15803d, 0xf59e0b);
+      bag.position.set(0.96, 0.19, -0.06);
+      bag.rotation.set(0, -0.15, -0.15);
+      group.add(bag);
+    } else if (deskIndex === 3) {
+      // Bàn này có 2 chiếc: 1 chiếc treo bên hông ghế trái, 1 chiếc đặt dưới sàn chân bàn phải
+      const bag1 = this.buildBackpackMesh(0xea580c, 0x1e293b);
+      bag1.position.set(-0.88, 0.38, 0.72);
+      bag1.rotation.y = -Math.PI / 2;
+      group.add(bag1);
+
+      const bag2 = this.buildBackpackMesh(0x6b21a8, 0xa855f7);
+      bag2.position.set(0.96, 0.19, 0.08);
+      bag2.rotation.set(0, 0.2, -0.14);
+      group.add(bag2);
+    } else if (deskIndex === 4) {
+      // Đặt dưới đất bên trái
+      const bag = this.buildBackpackMesh(0x0284c7, 0x475569);
+      bag.position.set(-0.96, 0.19, -0.06);
+      bag.rotation.set(0, -0.1, 0.15);
+      group.add(bag);
+    } else {
+      // Bàn 5: 1 chiếc treo bên hông ghế trái, 1 chiếc để dưới đất bên phải
+      const bag1 = this.buildBackpackMesh(0xdb2777, 0xfce7f3);
+      bag1.position.set(-0.88, 0.38, 0.72);
+      bag1.rotation.y = -Math.PI / 2;
+      group.add(bag1);
+
+      const bag2 = this.buildBackpackMesh(0x1e293b, 0x38bdf8);
+      bag2.position.set(0.96, 0.19, 0.05);
+      bag2.rotation.set(0, 0.15, -0.16);
+      group.add(bag2);
+    }
+  }
+
+  buildBackpackMesh(mainColor, pocketColor) {
+    const bagGroup = new THREE.Group();
+    const bagMat = new THREE.MeshLambertMaterial({ color: mainColor });
+    const pocketMat = new THREE.MeshLambertMaterial({ color: pocketColor });
+    const strapMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+
+    // 1. Thân balo
+    const bodyGeo = new THREE.BoxGeometry(0.28, 0.38, 0.18);
+    const body = new THREE.Mesh(bodyGeo, bagMat);
+    body.castShadow = true;
+    bagGroup.add(body);
+
+    // 2. Ngăn phụ phía trước
+    const pocketGeo = new THREE.BoxGeometry(0.22, 0.22, 0.07);
+    const pocket = new THREE.Mesh(pocketGeo, pocketMat);
+    pocket.position.set(0, -0.06, 0.12);
+    pocket.castShadow = true;
+    bagGroup.add(pocket);
+
+    // 3. Quai xách trên đỉnh
+    const handleGeo = new THREE.TorusGeometry(0.045, 0.012, 6, 12, Math.PI);
+    const handle = new THREE.Mesh(handleGeo, strapMat);
+    handle.rotation.x = Math.PI;
+    handle.position.set(0, 0.19, 0);
+    bagGroup.add(handle);
+
+    // 4. Dải phản quang trên túi phụ
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xf1f5f9 });
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 0.005), stripeMat);
+    stripe.position.set(0, -0.03, 0.158);
+    bagGroup.add(stripe);
+
+    return bagGroup;
   }
 
   buildChair() {
@@ -513,6 +681,469 @@ class SchoolScene3D {
     });
 
     return chair;
+  }
+
+  // Vài chú chim nhỏ đậu trên tường và gờ bảng đen (Yêu cầu 3.1)
+  createWallBirds() {
+    this.wallBirds = [];
+
+    const birdConfigs = [
+      // 1. Đậu trên thanh khung gỗ đỉnh bảng đen (nhìn xuống lớp học)
+      { x: -2.2, y: 3.52, z: -2.96, rotY: 0.35, color: 0xa16207 },
+      // 2. Đậu trên mép mái ngói đỏ bên phải
+      { x: 2.8, y: 4.98, z: -2.85, rotY: -0.4, color: 0x0284c7 },
+      // 3. Đậu trên đỉnh bờ tường bên trái
+      { x: -4.2, y: 4.82, z: -3.0, rotY: 0.6, color: 0x65a30d }
+    ];
+
+    birdConfigs.forEach((cfg) => {
+      const bird = new THREE.Group();
+      bird.position.set(cfg.x, cfg.y, cfg.z);
+      bird.rotation.y = cfg.rotY;
+
+      const bodyMat = new THREE.MeshLambertMaterial({ color: cfg.color });
+      const bellyMat = new THREE.MeshLambertMaterial({ color: 0xfef08a });
+      const beakMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+      const legMat = new THREE.MeshBasicMaterial({ color: 0xd97706 });
+
+      // Thân chim (hình oval)
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), bodyMat);
+      body.scale.set(0.9, 1.0, 1.25);
+      body.position.y = 0.08;
+      body.castShadow = true;
+      bird.add(body);
+
+      // Bụng chim sáng màu
+      const belly = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), bellyMat);
+      belly.scale.set(0.85, 0.95, 1.0);
+      belly.position.set(0, 0.065, 0.04);
+      bird.add(belly);
+
+      // Đầu chim
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 0.14, 0.08);
+
+      const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), bodyMat);
+      headGroup.add(headMesh);
+
+      // Mỏ chim vàng nhọn
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 5), beakMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0, 0.065);
+      headGroup.add(beak);
+
+      // Hai mắt đen tí hon
+      const eyeGeo = new THREE.SphereGeometry(0.012, 6, 6);
+      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeL.position.set(-0.035, 0.015, 0.035);
+      headGroup.add(eyeL);
+
+      const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeR.position.set(0.035, 0.015, 0.035);
+      headGroup.add(eyeR);
+
+      bird.add(headGroup);
+
+      // Cánh 2 bên
+      const wingGeo = new THREE.BoxGeometry(0.02, 0.07, 0.12);
+      const wingL = new THREE.Mesh(wingGeo, bodyMat);
+      wingL.position.set(-0.08, 0.09, -0.01);
+      wingL.rotation.z = -0.15;
+      bird.add(wingL);
+
+      const wingR = new THREE.Mesh(wingGeo, bodyMat);
+      wingR.position.set(0.08, 0.09, -0.01);
+      wingR.rotation.z = 0.15;
+      bird.add(wingR);
+
+      // Đuôi chim vểnh nhẹ
+      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.10), bodyMat);
+      tail.position.set(0, 0.10, -0.12);
+      tail.rotation.x = -0.25;
+      bird.add(tail);
+
+      // Chân chim bám gờ
+      const legGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.05, 5);
+      const legL = new THREE.Mesh(legGeo, legMat);
+      legL.position.set(-0.03, 0.025, 0.01);
+      bird.add(legL);
+
+      const legR = new THREE.Mesh(legGeo, legMat);
+      legR.position.set(0.03, 0.025, 0.01);
+      bird.add(legR);
+
+      this.scene.add(bird);
+      this.wallBirds.push({ group: bird, head: headGroup, baseY: cfg.y });
+    });
+  }
+
+  // Người ngoài hành tinh đứng dựa tường tạo dáng meme kinh điển (Yêu cầu 3.1)
+  createWallLeaningAlien(x = -4.9, z = -3.0) {
+    const alienGroup = new THREE.Group();
+    alienGroup.position.set(x, 0, z);
+
+    const skinMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 }); // Xanh Alien
+    const clothesMat = new THREE.MeshLambertMaterial({ color: 0x334155 }); // Áo xám trầm ngầu
+    const pantsMat = new THREE.MeshLambertMaterial({ color: 0x1e293b }); // Quần đen
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x09090b }); // Mắt đen tuyền sâu thẳm
+    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x475569 }); // Giày
+    const maneMat = new THREE.MeshLambertMaterial({ color: 0x3d1a04 }); // Bờm tóc nâu sẫm như meme
+
+    // Thân hơi nghiêng nhẹ tựa lưng vào tường
+    const bodyTiltGroup = new THREE.Group();
+    bodyTiltGroup.rotation.set(-0.05, 0.15, -0.08);
+
+    // 1. Thân áo (Torso)
+    const torsoGeo = new THREE.BoxGeometry(0.38, 0.62, 0.22);
+    const torso = new THREE.Mesh(torsoGeo, clothesMat);
+    torso.position.y = 1.05;
+    torso.castShadow = true;
+    bodyTiltGroup.add(torso);
+
+    // 2. Hai tay đút túi áo cực chill
+    const armGeo = new THREE.BoxGeometry(0.09, 0.44, 0.10);
+    const armL = new THREE.Mesh(armGeo, clothesMat);
+    armL.position.set(-0.23, 1.0, 0.04);
+    armL.rotation.z = -0.15;
+    armL.rotation.x = -0.18;
+    bodyTiltGroup.add(armL);
+
+    const armR = new THREE.Mesh(armGeo, clothesMat);
+    armR.position.set(0.23, 1.0, 0.04);
+    armR.rotation.z = 0.15;
+    armR.rotation.x = -0.18;
+    bodyTiltGroup.add(armR);
+
+    // 3. Cổ thon Alien
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 8), skinMat);
+    neck.position.y = 1.40;
+    bodyTiltGroup.add(neck);
+
+    // 4. Đầu Alien to quả lê kinh điển (cúi gục suy tư như meme)
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 1.62, 0.02);
+    headGroup.rotation.set(0.24, -0.1, 0.05); // Cúi đầu sâu sắc
+
+    // Hộp sọ trên to bè
+    const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), skinMat);
+    cranium.scale.set(1.05, 1.25, 1.0);
+    cranium.castShadow = true;
+    headGroup.add(cranium);
+
+    // Cằm thon nhọn
+    const chin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.22, 8), skinMat);
+    chin.rotation.x = Math.PI;
+    chin.position.set(0, -0.15, 0.03);
+    headGroup.add(chin);
+
+    // Hai mắt Alien to hình quả hạnh nhân xếch chéo
+    const eyeGeo = new THREE.SphereGeometry(0.075, 10, 10);
+    eyeGeo.scale(1.2, 0.65, 0.5);
+
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.11, 0.03, 0.17);
+    eyeL.rotation.set(-0.15, 0.35, -0.35);
+    headGroup.add(eyeL);
+
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.11, 0.03, 0.17);
+    eyeR.rotation.set(-0.15, -0.35, 0.35);
+    headGroup.add(eyeR);
+
+    // Bờm tóc nâu sẫm vuốt rũ như nhân vật meme
+    const hair = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 1), maneMat);
+    hair.scale.set(0.9, 1.2, 1.4);
+    hair.position.set(0, 0.18, -0.06);
+    headGroup.add(hair);
+
+    bodyTiltGroup.add(headGroup);
+
+    // 5. CHÂN ĐỨNG & CHÂN CO ĐẠP TƯỜNG (DÁNG MEME ĐẶC TRƯNG)
+    // Chân trái: Chân trụ đứng thẳng chạm đất
+    const legLGroup = new THREE.Group();
+    legLGroup.position.set(-0.12, 0.74, 0);
+
+    const thighL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.40, 0.13), pantsMat);
+    thighL.position.y = -0.18;
+    thighL.castShadow = true;
+    legLGroup.add(thighL);
+
+    const calfL = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.38, 0.11), pantsMat);
+    calfL.position.y = -0.52;
+    calfL.castShadow = true;
+    legLGroup.add(calfL);
+
+    const footL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.20), shoeMat);
+    footL.position.set(0, -0.70, 0.04);
+    footL.castShadow = true;
+    legLGroup.add(footL);
+
+    alienGroup.add(legLGroup);
+
+    // Chân phải: Chân co gập đạp tựa vào tường sau (Y HỆT BỨC ẢNH MEME)
+    const legRGroup = new THREE.Group();
+    legRGroup.position.set(0.12, 0.74, 0);
+
+    // Đùi phải đưa ra phía trước
+    const thighR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.38, 0.13), pantsMat);
+    thighR.position.set(0, -0.10, 0.14);
+    thighR.rotation.x = -1.05; // Đùi gập nâng lên trước
+    thighR.castShadow = true;
+    legRGroup.add(thighR);
+
+    // Cẳng chân phải gập ngược ra sau về phía tường
+    const calfR = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.38, 0.11), pantsMat);
+    calfR.position.set(0, -0.18, -0.06);
+    calfR.rotation.x = 0.95; // Cẳng chân xiên về sau
+    calfR.castShadow = true;
+    legRGroup.add(calfR);
+
+    // Bàn chân phải: Đế giày áp phẳng vào mặt tường phía sau z = -0.18 (tương đương z tường -3.18)
+    const footR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.20), shoeMat);
+    footR.position.set(0, -0.28, -0.16);
+    footR.rotation.x = Math.PI / 2; // Đế giày quay thẳng vào tường
+    footR.castShadow = true;
+    legRGroup.add(footR);
+
+    alienGroup.add(legRGroup);
+    alienGroup.add(bodyTiltGroup);
+
+    // Bong bóng suy tư meme trên đầu
+    const bubbleCanvas = document.createElement('canvas');
+    bubbleCanvas.width = 128;
+    bubbleCanvas.height = 128;
+    const bctx = bubbleCanvas.getContext('2d');
+    bctx.font = '72px "Segoe UI Emoji", sans-serif';
+    bctx.textAlign = 'center';
+    bctx.textBaseline = 'middle';
+    bctx.fillText('💭', 64, 64);
+
+    const bubbleTex = new THREE.CanvasTexture(bubbleCanvas);
+    const bubbleMat = new THREE.SpriteMaterial({ map: bubbleTex });
+    const bubbleSprite = new THREE.Sprite(bubbleMat);
+    bubbleSprite.position.set(0.28, 2.05, 0.1);
+    bubbleSprite.scale.set(0.65, 0.65, 0.65);
+    alienGroup.add(bubbleSprite);
+
+    this.scene.add(alienGroup);
+  }
+
+  // Kiếm cắm trong đá (Excalibur in Stone) bên trái ngoài phạm vi di chuyển (Yêu cầu 3.1)
+  createExcaliburInStone(x = -11.5, z = 2.0) {
+    const swordGroup = new THREE.Group();
+    swordGroup.position.set(x, 0, z);
+
+    // 1. Tảng đá cổ rêu phong (Ancient Rock)
+    const rockMat = new THREE.MeshLambertMaterial({ color: 0x475569, flatShading: true });
+    const mossMat = new THREE.MeshLambertMaterial({ color: 0x15803d, flatShading: true });
+
+    // Khối đá chính
+    const mainRock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4, 1), rockMat);
+    mainRock.scale.set(1.45, 1.05, 1.25);
+    mainRock.position.y = 1.05;
+    mainRock.rotation.set(0.2, 0.4, -0.1);
+    mainRock.castShadow = true;
+    mainRock.receiveShadow = true;
+    swordGroup.add(mainRock);
+
+    // Mảng rêu phong xanh trên sườn đá
+    const moss1 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7, 0), mossMat);
+    moss1.scale.set(1.2, 0.6, 1.0);
+    moss1.position.set(0.8, 0.7, 0.6);
+    swordGroup.add(moss1);
+
+    const moss2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6, 0), mossMat);
+    moss2.position.set(-0.7, 0.5, -0.5);
+    swordGroup.add(moss2);
+
+    // 2-3 tảng đá nhỏ vệ tinh xung quanh chân đế
+    const subRock1 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), rockMat);
+    subRock1.position.set(-1.3, 0.35, 0.8);
+    swordGroup.add(subRock1);
+
+    const subRock2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 0), rockMat);
+    subRock2.position.set(1.2, 0.3, -0.9);
+    swordGroup.add(subRock2);
+
+    // 2. Vòng hào quang cổ ngữ ma thuật xoay nhẹ quanh chân kiếm
+    const runeRingGeo = new THREE.RingGeometry(0.35, 0.55, 24);
+    const runeRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.65 });
+    const runeRing = new THREE.Mesh(runeRingGeo, runeRingMat);
+    runeRing.rotation.x = -Math.PI / 2;
+    runeRing.position.set(0, 2.06, 0);
+    swordGroup.add(runeRing);
+    this.excaliburRuneRing = runeRing;
+
+    // 3. THANH KIẾM EXCALIBUR HUYỀN THOẠI
+    const swordModel = new THREE.Group();
+    swordModel.position.set(0, 2.05, 0);
+    swordModel.rotation.set(0.08, 0.25, -0.06); // Nghiêng nhẹ dũng mãnh
+
+    // Lưỡi kiếm bạc ánh kim bóng loáng
+    const bladeMat = new THREE.MeshStandardMaterial({
+      color: 0xf1f5f9,
+      metalness: 0.95,
+      roughness: 0.15
+    });
+    const bladeGeo = new THREE.BoxGeometry(0.11, 1.4, 0.022);
+    const blade = new THREE.Mesh(bladeGeo, bladeMat);
+    blade.position.y = 0.55; // Cắm 1/3 lưỡi xuống dưới mặt đá
+    blade.castShadow = true;
+    swordModel.add(blade);
+
+    // Mũi kiếm nhọn cắm vào đá
+    const tipGeo = new THREE.ConeGeometry(0.06, 0.22, 4);
+    const tip = new THREE.Mesh(tipGeo, bladeMat);
+    tip.rotation.y = Math.PI / 4;
+    tip.position.y = -0.18;
+    swordModel.add(tip);
+
+    // Rãnh sống kiếm phát sáng ma thuật xanh cyan
+    const runeCoreMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const runeCore = new THREE.Mesh(new THREE.BoxGeometry(0.024, 1.25, 0.026), runeCoreMat);
+    runeCore.position.y = 0.60;
+    swordModel.add(runeCore);
+
+    // Chuôi kiếm chắn ngang (Crossguard) bằng vàng kim chạm khắc
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15,
+      metalness: 0.85,
+      roughness: 0.25
+    });
+    const crossguard = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.065, 0.07), goldMat);
+    crossguard.position.y = 1.28;
+    crossguard.castShadow = true;
+    swordModel.add(crossguard);
+
+    // Cán cầm kiếm (Grip) bọc da đỏ hoàng gia
+    const gripMat = new THREE.MeshLambertMaterial({ color: 0x991b1b });
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.32, 8), gripMat);
+    grip.position.y = 1.48;
+    swordModel.add(grip);
+
+    // Đốc kiếm (Pommel) vàng đính viên đá ngọc bích phát sáng
+    const pommel = new THREE.Mesh(new THREE.DodecahedronGeometry(0.065, 1), goldMat);
+    pommel.position.y = 1.68;
+    swordModel.add(pommel);
+
+    const gem = new THREE.Mesh(new THREE.DodecahedronGeometry(0.035, 0), new THREE.MeshBasicMaterial({ color: 0x06b6d4 }));
+    gem.position.y = 1.68;
+    swordModel.add(gem);
+
+    swordGroup.add(swordModel);
+    this.scene.add(swordGroup);
+  }
+
+  // Tên lửa vũ trụ (Space Rocket) bên phải ngoài phạm vi di chuyển (Yêu cầu 3.1)
+  createGardenRocket(x = 11.5, z = 2.0) {
+    const rocketGroup = new THREE.Group();
+    rocketGroup.position.set(x, 0, z);
+
+    // Vật liệu
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.2 });
+    const redMat = new THREE.MeshLambertMaterial({ color: 0xdc2626 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25, metalness: 0.8 });
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.6 });
+
+    // 1. Chân đế bệ phóng 3 càng kim loại cắm xuống cỏ
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI * 2;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.8, 8), darkMat);
+      leg.position.set(Math.cos(angle) * 1.1, 0.75, Math.sin(angle) * 1.1);
+      leg.rotation.z = Math.cos(angle) * 0.35;
+      leg.rotation.x = -Math.sin(angle) * 0.35;
+      leg.castShadow = true;
+      rocketGroup.add(leg);
+    }
+
+    // 2. Ống xả phản lực (Thruster Nozzle) ở đáy
+    const thruster = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.42, 0.65, 16), darkMat);
+    thruster.position.y = 0.85;
+    rocketGroup.add(thruster);
+
+    // 3. Thân tên lửa chính hình trụ trắng sứ (cao 4.6m)
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.95, 4.6, 20), whiteMat);
+    body.position.y = 3.45;
+    body.castShadow = true;
+    rocketGroup.add(body);
+
+    // Vạch trang trí đỏ quanh thân
+    const redStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.83, 0.85, 0.38, 20), redMat);
+    redStripe.position.y = 2.0;
+    rocketGroup.add(redStripe);
+
+    // 4. Vòng đai vàng kim nối thân và chóp
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.83, 0.045, 8, 24), goldMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 5.75;
+    rocketGroup.add(ring);
+
+    // 5. Chóp nón tên lửa màu đỏ cờ tươi
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.82, 1.9, 20), redMat);
+    nose.position.y = 6.70;
+    nose.castShadow = true;
+    rocketGroup.add(nose);
+
+    // Đầu kim thu sét trên đỉnh chóp
+    const tipNeedle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.7, 8), goldMat);
+    tipNeedle.position.y = 7.95;
+    rocketGroup.add(tipNeedle);
+
+    // 6. Cửa sổ tròn phi hành gia (Porthole)
+    const windowRing = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.045, 8, 20), goldMat);
+    windowRing.position.set(0, 4.35, 0.86);
+    rocketGroup.add(windowRing);
+
+    const windowGlass = new THREE.Mesh(new THREE.SphereGeometry(0.30, 16, 16), glassMat);
+    windowGlass.scale.set(1.0, 1.0, 0.25);
+    windowGlass.position.set(0, 4.35, 0.86);
+    rocketGroup.add(windowGlass);
+
+    // 7. Bốn cánh đuôi tam giác đỏ ổn định (Fins)
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      const finGroup = new THREE.Group();
+      finGroup.rotation.y = angle;
+
+      const finShape = new THREE.Shape();
+      finShape.moveTo(0.88, 1.2);
+      finShape.lineTo(1.85, 0.4);
+      finShape.lineTo(1.85, 1.6);
+      finShape.lineTo(0.88, 2.7);
+      finShape.closePath();
+
+      const extrudeSettings = { depth: 0.06, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.015, bevelThickness: 0.015 };
+      const finGeo = new THREE.ExtrudeGeometry(finShape, extrudeSettings);
+      const fin = new THREE.Mesh(finGeo, redMat);
+      fin.position.z = -0.03;
+      fin.castShadow = true;
+      finGroup.add(fin);
+
+      rocketGroup.add(finGroup);
+    }
+
+    // 8. Logo / Chữ trang trí trên thân tên lửa
+    const logoCanvas = document.createElement('canvas');
+    logoCanvas.width = 256;
+    logoCanvas.height = 128;
+    const lctx = logoCanvas.getContext('2d');
+    lctx.fillStyle = '#dc2626';
+    lctx.font = 'bold 36px "Segoe UI", sans-serif';
+    lctx.textAlign = 'center';
+    lctx.textBaseline = 'middle';
+    lctx.fillText('HELL EXAM', 128, 48);
+    lctx.fillStyle = '#eab308';
+    lctx.font = 'bold 26px "Segoe UI", sans-serif';
+    lctx.fillText('★ VN-01 ★', 128, 92);
+
+    const logoTex = new THREE.CanvasTexture(logoCanvas);
+    const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.6), new THREE.MeshBasicMaterial({ map: logoTex, transparent: true }));
+    logoPlane.position.set(0, 3.2, 0.90);
+    rocketGroup.add(logoPlane);
+
+    this.scene.add(rocketGroup);
   }
 
   createBlackboardAndBanner() {
@@ -1284,6 +1915,21 @@ class SchoolScene3D {
         cloud.position.x = -30;
       }
     });
+
+    // 1.5. Hoạt ảnh chim nhỏ trên tường quay đầu tò mò (Yêu cầu 3.1)
+    if (this.wallBirds && this.wallBirds.length > 0) {
+      const time = this.clock.getElapsedTime();
+      this.wallBirds.forEach((b, i) => {
+        if (b.head) {
+          b.head.rotation.y = Math.sin(time * 2.2 + i * 2.1) * 0.45;
+        }
+      });
+    }
+
+    // Hoạt ảnh vòng hào quang ma thuật thanh kiếm Excalibur xoay nhẹ (Yêu cầu 3.1)
+    if (this.excaliburRuneRing) {
+      this.excaliburRuneRing.rotation.z += 0.5 * delta;
+    }
 
     // 2. Di chuyển nhân vật của chính mình (Yêu cầu 1.7)
     this.updateMyPlayerMovement(delta);
