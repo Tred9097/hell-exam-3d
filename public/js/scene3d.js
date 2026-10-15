@@ -253,17 +253,14 @@ class SchoolScene3D {
     // 5. Cột cờ
     this.createFlagPole(-8.5, -8);
 
-    // 6. Kiếm cắm trong đá (Excalibur in Stone) bên trái ngoài phạm vi di chuyển (Yêu cầu 3.1)
-    this.createExcaliburInStone(-11.5, 2.0);
+    // 6. Kiếm cắm trong đá (Excalibur in Stone) bên trái ngoài phạm vi di chuyển (Yêu cầu 3.2: Dời ra xa rặng cây)
+    this.createExcaliburInStone(-17.0, -2.0);
 
-    // 7. Tên lửa vũ trụ (Space Rocket) bên phải ngoài phạm vi di chuyển (Yêu cầu 3.1)
-    this.createGardenRocket(11.5, 2.0);
+    // 7. Tên lửa vũ trụ (Space Rocket) bên phải ngoài phạm vi di chuyển (Yêu cầu 3.2: Dời ra xa rặng cây)
+    this.createGardenRocket(17.5, -2.0);
 
-    // 8. Vài chú chim nhỏ đậu trên tường lớp học & bảng đen (Yêu cầu 3.1)
+    // 8. Vài chú chim nhỏ đậu trên tường lớp học & mái ngói (Yêu cầu 3.1 & 3.2)
     this.createWallBirds();
-
-    // 9. Người ngoài hành tinh đứng dựa tường tạo dáng meme kinh điển (Yêu cầu 3.1)
-    this.createWallLeaningAlien(-4.9, -3.0);
   }
 
   createSchoolTree(x, z, hasRedFlowers = true) {
@@ -552,53 +549,12 @@ class SchoolScene3D {
       group.add(createRuler(-0.35, -0.09, 0));
     }
 
-    // 2. CẶP SÁCH / BALO HỌC SINH (Yêu cầu 3.1: Treo bên hông ghế hoặc đặt dưới đất cạnh chân bàn)
+    // 2. CẶP SÁCH / BALO HỌC SINH (Yêu cầu 3.2: Bỏ toàn bộ balo, riêng bàn đầu tiên giữ lại 1 balo xanh làm kỉ niệm)
     if (deskIndex === 0) {
-      // Đặt dưới đất cạnh chân bàn bên trái, hơi nghiêng tựa vào chân bàn
-      const bag = this.buildBackpackMesh(0x1e3a8a, 0xef4444);
+      const bag = this.buildBackpackMesh(0x2563eb, 0x60a5fa);
       bag.position.set(-0.96, 0.19, 0.05);
       bag.rotation.set(0, 0.1, 0.16);
       group.add(bag);
-    } else if (deskIndex === 1) {
-      // Treo bên hông ghế bên phải
-      const bag = this.buildBackpackMesh(0x991b1b, 0xfef08a);
-      bag.position.set(0.88, 0.38, 0.72);
-      bag.rotation.y = Math.PI / 2;
-      group.add(bag);
-    } else if (deskIndex === 2) {
-      // Đặt dưới đất cạnh chân bàn bên phải
-      const bag = this.buildBackpackMesh(0x15803d, 0xf59e0b);
-      bag.position.set(0.96, 0.19, -0.06);
-      bag.rotation.set(0, -0.15, -0.15);
-      group.add(bag);
-    } else if (deskIndex === 3) {
-      // Bàn này có 2 chiếc: 1 chiếc treo bên hông ghế trái, 1 chiếc đặt dưới sàn chân bàn phải
-      const bag1 = this.buildBackpackMesh(0xea580c, 0x1e293b);
-      bag1.position.set(-0.88, 0.38, 0.72);
-      bag1.rotation.y = -Math.PI / 2;
-      group.add(bag1);
-
-      const bag2 = this.buildBackpackMesh(0x6b21a8, 0xa855f7);
-      bag2.position.set(0.96, 0.19, 0.08);
-      bag2.rotation.set(0, 0.2, -0.14);
-      group.add(bag2);
-    } else if (deskIndex === 4) {
-      // Đặt dưới đất bên trái
-      const bag = this.buildBackpackMesh(0x0284c7, 0x475569);
-      bag.position.set(-0.96, 0.19, -0.06);
-      bag.rotation.set(0, -0.1, 0.15);
-      group.add(bag);
-    } else {
-      // Bàn 5: 1 chiếc treo bên hông ghế trái, 1 chiếc để dưới đất bên phải
-      const bag1 = this.buildBackpackMesh(0xdb2777, 0xfce7f3);
-      bag1.position.set(-0.88, 0.38, 0.72);
-      bag1.rotation.y = -Math.PI / 2;
-      group.add(bag1);
-
-      const bag2 = this.buildBackpackMesh(0x1e293b, 0x38bdf8);
-      bag2.position.set(0.96, 0.19, 0.05);
-      bag2.rotation.set(0, 0.15, -0.16);
-      group.add(bag2);
     }
   }
 
@@ -683,16 +639,14 @@ class SchoolScene3D {
     return chair;
   }
 
-  // Vài chú chim nhỏ đậu trên tường và gờ bảng đen (Yêu cầu 3.1)
+  // Vài chú chim nhỏ đậu trên tường và mái ngói (Yêu cầu 3.1 & 3.2: Bỏ con chim vàng)
   createWallBirds() {
     this.wallBirds = [];
 
     const birdConfigs = [
-      // 1. Đậu trên thanh khung gỗ đỉnh bảng đen (nhìn xuống lớp học)
-      { x: -2.2, y: 3.52, z: -2.96, rotY: 0.35, color: 0xa16207 },
-      // 2. Đậu trên mép mái ngói đỏ bên phải
+      // 1. Đậu trên mép mái ngói đỏ bên phải
       { x: 2.8, y: 4.98, z: -2.85, rotY: -0.4, color: 0x0284c7 },
-      // 3. Đậu trên đỉnh bờ tường bên trái
+      // 2. Đậu trên đỉnh bờ tường bên trái
       { x: -4.2, y: 4.82, z: -3.0, rotY: 0.6, color: 0x65a30d }
     ];
 
@@ -778,159 +732,8 @@ class SchoolScene3D {
     });
   }
 
-  // Người ngoài hành tinh đứng dựa tường tạo dáng meme kinh điển (Yêu cầu 3.1)
-  createWallLeaningAlien(x = -4.9, z = -3.0) {
-    const alienGroup = new THREE.Group();
-    alienGroup.position.set(x, 0, z);
-
-    const skinMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 }); // Xanh Alien
-    const clothesMat = new THREE.MeshLambertMaterial({ color: 0x334155 }); // Áo xám trầm ngầu
-    const pantsMat = new THREE.MeshLambertMaterial({ color: 0x1e293b }); // Quần đen
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x09090b }); // Mắt đen tuyền sâu thẳm
-    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x475569 }); // Giày
-    const maneMat = new THREE.MeshLambertMaterial({ color: 0x3d1a04 }); // Bờm tóc nâu sẫm như meme
-
-    // Thân hơi nghiêng nhẹ tựa lưng vào tường
-    const bodyTiltGroup = new THREE.Group();
-    bodyTiltGroup.rotation.set(-0.05, 0.15, -0.08);
-
-    // 1. Thân áo (Torso)
-    const torsoGeo = new THREE.BoxGeometry(0.38, 0.62, 0.22);
-    const torso = new THREE.Mesh(torsoGeo, clothesMat);
-    torso.position.y = 1.05;
-    torso.castShadow = true;
-    bodyTiltGroup.add(torso);
-
-    // 2. Hai tay đút túi áo cực chill
-    const armGeo = new THREE.BoxGeometry(0.09, 0.44, 0.10);
-    const armL = new THREE.Mesh(armGeo, clothesMat);
-    armL.position.set(-0.23, 1.0, 0.04);
-    armL.rotation.z = -0.15;
-    armL.rotation.x = -0.18;
-    bodyTiltGroup.add(armL);
-
-    const armR = new THREE.Mesh(armGeo, clothesMat);
-    armR.position.set(0.23, 1.0, 0.04);
-    armR.rotation.z = 0.15;
-    armR.rotation.x = -0.18;
-    bodyTiltGroup.add(armR);
-
-    // 3. Cổ thon Alien
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 8), skinMat);
-    neck.position.y = 1.40;
-    bodyTiltGroup.add(neck);
-
-    // 4. Đầu Alien to quả lê kinh điển (cúi gục suy tư như meme)
-    const headGroup = new THREE.Group();
-    headGroup.position.set(0, 1.62, 0.02);
-    headGroup.rotation.set(0.24, -0.1, 0.05); // Cúi đầu sâu sắc
-
-    // Hộp sọ trên to bè
-    const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), skinMat);
-    cranium.scale.set(1.05, 1.25, 1.0);
-    cranium.castShadow = true;
-    headGroup.add(cranium);
-
-    // Cằm thon nhọn
-    const chin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.22, 8), skinMat);
-    chin.rotation.x = Math.PI;
-    chin.position.set(0, -0.15, 0.03);
-    headGroup.add(chin);
-
-    // Hai mắt Alien to hình quả hạnh nhân xếch chéo
-    const eyeGeo = new THREE.SphereGeometry(0.075, 10, 10);
-    eyeGeo.scale(1.2, 0.65, 0.5);
-
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(-0.11, 0.03, 0.17);
-    eyeL.rotation.set(-0.15, 0.35, -0.35);
-    headGroup.add(eyeL);
-
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(0.11, 0.03, 0.17);
-    eyeR.rotation.set(-0.15, -0.35, 0.35);
-    headGroup.add(eyeR);
-
-    // Bờm tóc nâu sẫm vuốt rũ như nhân vật meme
-    const hair = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 1), maneMat);
-    hair.scale.set(0.9, 1.2, 1.4);
-    hair.position.set(0, 0.18, -0.06);
-    headGroup.add(hair);
-
-    bodyTiltGroup.add(headGroup);
-
-    // 5. CHÂN ĐỨNG & CHÂN CO ĐẠP TƯỜNG (DÁNG MEME ĐẶC TRƯNG)
-    // Chân trái: Chân trụ đứng thẳng chạm đất
-    const legLGroup = new THREE.Group();
-    legLGroup.position.set(-0.12, 0.74, 0);
-
-    const thighL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.40, 0.13), pantsMat);
-    thighL.position.y = -0.18;
-    thighL.castShadow = true;
-    legLGroup.add(thighL);
-
-    const calfL = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.38, 0.11), pantsMat);
-    calfL.position.y = -0.52;
-    calfL.castShadow = true;
-    legLGroup.add(calfL);
-
-    const footL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.20), shoeMat);
-    footL.position.set(0, -0.70, 0.04);
-    footL.castShadow = true;
-    legLGroup.add(footL);
-
-    alienGroup.add(legLGroup);
-
-    // Chân phải: Chân co gập đạp tựa vào tường sau (Y HỆT BỨC ẢNH MEME)
-    const legRGroup = new THREE.Group();
-    legRGroup.position.set(0.12, 0.74, 0);
-
-    // Đùi phải đưa ra phía trước
-    const thighR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.38, 0.13), pantsMat);
-    thighR.position.set(0, -0.10, 0.14);
-    thighR.rotation.x = -1.05; // Đùi gập nâng lên trước
-    thighR.castShadow = true;
-    legRGroup.add(thighR);
-
-    // Cẳng chân phải gập ngược ra sau về phía tường
-    const calfR = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.38, 0.11), pantsMat);
-    calfR.position.set(0, -0.18, -0.06);
-    calfR.rotation.x = 0.95; // Cẳng chân xiên về sau
-    calfR.castShadow = true;
-    legRGroup.add(calfR);
-
-    // Bàn chân phải: Đế giày áp phẳng vào mặt tường phía sau z = -0.18 (tương đương z tường -3.18)
-    const footR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.20), shoeMat);
-    footR.position.set(0, -0.28, -0.16);
-    footR.rotation.x = Math.PI / 2; // Đế giày quay thẳng vào tường
-    footR.castShadow = true;
-    legRGroup.add(footR);
-
-    alienGroup.add(legRGroup);
-    alienGroup.add(bodyTiltGroup);
-
-    // Bong bóng suy tư meme trên đầu
-    const bubbleCanvas = document.createElement('canvas');
-    bubbleCanvas.width = 128;
-    bubbleCanvas.height = 128;
-    const bctx = bubbleCanvas.getContext('2d');
-    bctx.font = '72px "Segoe UI Emoji", sans-serif';
-    bctx.textAlign = 'center';
-    bctx.textBaseline = 'middle';
-    bctx.fillText('💭', 64, 64);
-
-    const bubbleTex = new THREE.CanvasTexture(bubbleCanvas);
-    const bubbleMat = new THREE.SpriteMaterial({ map: bubbleTex });
-    const bubbleSprite = new THREE.Sprite(bubbleMat);
-    bubbleSprite.position.set(0.28, 2.05, 0.1);
-    bubbleSprite.scale.set(0.65, 0.65, 0.65);
-    alienGroup.add(bubbleSprite);
-
-    this.scene.add(alienGroup);
-  }
-
-  // Kiếm cắm trong đá (Excalibur in Stone) bên trái ngoài phạm vi di chuyển (Yêu cầu 3.1)
-  createExcaliburInStone(x = -11.5, z = 2.0) {
+  // Kiếm cắm trong đá (Excalibur in Stone) bên trái ngoài phạm vi di chuyển (Yêu cầu 3.2: Dời ra xa rặng cây)
+  createExcaliburInStone(x = -17.0, z = -2.0) {
     const swordGroup = new THREE.Group();
     swordGroup.position.set(x, 0, z);
 
@@ -1035,8 +838,8 @@ class SchoolScene3D {
     this.scene.add(swordGroup);
   }
 
-  // Tên lửa vũ trụ (Space Rocket) bên phải ngoài phạm vi di chuyển (Yêu cầu 3.1)
-  createGardenRocket(x = 11.5, z = 2.0) {
+  // Tên lửa vũ trụ (Space Rocket) bên phải ngoài phạm vi di chuyển (Yêu cầu 3.2: Dời ra xa rặng cây)
+  createGardenRocket(x = 17.5, z = -2.0) {
     const rocketGroup = new THREE.Group();
     rocketGroup.position.set(x, 0, z);
 
@@ -1746,12 +1549,10 @@ class SchoolScene3D {
 
     // Ghi nhận thời điểm nhận gói tin để kiểm soát timeout
     char.lastMovePacketTime = Date.now();
-    char.targetX = data.x;
-    char.targetZ = data.z;
-    char.targetRot = data.rot;
     char.isMoving = !!data.isMoving;
+    char.targetRot = data.rot;
 
-    // Vận tốc để dự đoán chuyển động (Dead Reckoning - Yêu cầu 2.8)
+    // Vận tốc để dự đoán chuyển động (Dead Reckoning - Yêu cầu 2.8 & 3.2)
     if (data.vx !== undefined && data.vz !== undefined) {
       char.vx = data.vx;
       char.vz = data.vz;
@@ -1761,6 +1562,16 @@ class SchoolScene3D {
     } else {
       char.vx = 0;
       char.vz = 0;
+    }
+
+    // Yêu cầu 3.2: Triệt tiêu khựng giật theo nhịp packet
+    // Khi đang di chuyển, dự đoán mượt mà theo độ trễ thay vì kéo lùi về data.x
+    if (char.isMoving) {
+      char.targetX = Math.max(-7.2, Math.min(7.2, data.x + char.vx * 0.06));
+      char.targetZ = Math.max(-2.5, Math.min(7.8, data.z + char.vz * 0.06));
+    } else {
+      char.targetX = data.x;
+      char.targetZ = data.z;
     }
 
     if (data.isSitting !== undefined && data.isSitting !== char.isSitting) {
@@ -1937,47 +1748,55 @@ class SchoolScene3D {
     // 3. Nhân vật & Nội suy Lerp + Dead Reckoning cho người chơi từ xa (Yêu cầu 2.8: Triệt tiêu khựng lag)
     for (const [id, char] of this.characters.entries()) {
       if (id !== this.myPlayerId && !char.isSitting) {
-        // Hết hạn packet nếu quá 450ms không có dữ liệu mới -> Tự động dừng bước
-        if (char.isMoving && Date.now() - (char.lastMovePacketTime || 0) > 450) {
+        // Hết hạn packet nếu quá 400ms không có dữ liệu mới -> Tự động dừng bước êm dịu
+        if (char.isMoving && Date.now() - (char.lastMovePacketTime || 0) > 400) {
           char.isMoving = false;
           char.vx = 0;
           char.vz = 0;
         }
 
-        // Dead Reckoning: Tự động tiếp tục đẩy vị trí mục tiêu theo vận tốc trong lúc chờ packet tiếp theo
-        // Điều này đảm bảo tốc độ di chuyển đều đặn liên tục, loại bỏ hoàn toàn độ trễ và khựng giật theo nhịp
-        if (char.isMoving && (char.vx || char.vz)) {
-          char.targetX = (char.targetX !== undefined ? char.targetX : char.group.position.x) + char.vx * delta;
-          char.targetZ = (char.targetZ !== undefined ? char.targetZ : char.group.position.z) + char.vz * delta;
+        if (char.isMoving) {
+          // BƯỚC 1: Nhân vật tự di chuyển liên tục theo vận tốc thực (3.6m/s) -> Không bao giờ bị khựng ngắt quãng
+          char.group.position.x += char.vx * delta;
+          char.group.position.z += char.vz * delta;
 
-          // Giới hạn trong phạm vi phòng học
-          char.targetX = Math.max(-7.2, Math.min(7.2, char.targetX));
-          char.targetZ = Math.max(-2.5, Math.min(7.8, char.targetZ));
-        }
+          // BƯỚC 2: Bù sai số nhẹ nhàng (Soft Error Blending) để bám sát quỹ đạo máy chủ mà không giật lùi
+          if (char.targetX !== undefined && char.targetZ !== undefined) {
+            const errX = char.targetX - char.group.position.x;
+            const errZ = char.targetZ - char.group.position.z;
+            const distSq = errX * errX + errZ * errZ;
 
-        if (char.targetX !== undefined) {
-          const dx = char.targetX - char.group.position.x;
-          const dz = char.targetZ - char.group.position.z;
-          const distSq = dx * dx + dz * dz;
-
-          if (distSq > 9.0) {
-            // Lệch quá xa (>3m do lag mạng), snap ngay lập tức
-            char.group.position.x = char.targetX;
-            char.group.position.z = char.targetZ;
-          } else {
-            // Nội suy siêu mượt với hệ số lerp 18 * delta bám sát vị trí liên tục
-            const lerpFactor = Math.min(1.0, 18 * delta);
+            if (distSq > 4.0) {
+              char.group.position.x = char.targetX;
+              char.group.position.z = char.targetZ;
+            } else {
+              const correctionFactor = Math.min(1.0, 6.0 * delta);
+              char.group.position.x += errX * correctionFactor;
+              char.group.position.z += errZ * correctionFactor;
+            }
+          }
+        } else {
+          // Khi dừng di chuyển: Lerp êm dịu về đúng vị trí đích dừng cuối cùng
+          if (char.targetX !== undefined && char.targetZ !== undefined) {
+            const dx = char.targetX - char.group.position.x;
+            const dz = char.targetZ - char.group.position.z;
+            const lerpFactor = Math.min(1.0, 14.0 * delta);
             char.group.position.x += dx * lerpFactor;
             char.group.position.z += dz * lerpFactor;
           }
-          char.group.position.y = 0.02;
+        }
 
-          if (char.targetRot !== undefined) {
-            let diff = char.targetRot - char.group.rotation.y;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            char.group.rotation.y += diff * Math.min(1.0, 16 * delta);
-          }
+        // Giới hạn trong sân lớp học
+        char.group.position.x = Math.max(-7.2, Math.min(7.2, char.group.position.x));
+        char.group.position.z = Math.max(-2.5, Math.min(7.8, char.group.position.z));
+        char.group.position.y = 0.02;
+
+        // Xoay hướng nhìn mượt mà
+        if (char.targetRot !== undefined) {
+          let diff = char.targetRot - char.group.rotation.y;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          char.group.rotation.y += diff * Math.min(1.0, 14.0 * delta);
         }
       }
       char.update(delta);

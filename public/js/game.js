@@ -1374,28 +1374,62 @@ function bindUIEvents() {
     });
   });
 
-  // 2. Vào phòng
+  // 2. Vào phòng (Yêu cầu 3.2: Thông báo lỗi màu đỏ nằm dưới ô nhập ID & Hỗ trợ Enter)
   document.getElementById('btn-join-room')?.addEventListener('click', () => {
     window.audioMgr.init();
-    const code = document.getElementById('input-room-code')?.value.trim();
+    const codeInput = document.getElementById('input-room-code');
+    const code = codeInput?.value.trim().toUpperCase();
     const name = document.getElementById('input-player-name')?.value.trim() || 'Học Sinh Gương Mẫu';
+    const errorMsgEl = document.getElementById('join-room-error-msg');
 
     if (!code) {
-      alert('Vui lòng nhập mã phòng (4 chữ cái)!');
+      if (errorMsgEl) {
+        errorMsgEl.innerText = 'Vui lòng nhập mã phòng (4 chữ cái)!';
+        errorMsgEl.classList.remove('hidden');
+      }
       return;
     }
 
     socket.emit('join_room', { roomCode: code, playerName: name, characterModel: selectedSkinId, skinColor: selectedSkinColor, faceColor: selectedFaceColor, characterType: selectedSkinId }, (res) => {
       if (res.success) {
+        if (errorMsgEl) errorMsgEl.classList.add('hidden');
         addChatMessage('📢 HỆ THỐNG', `Đã vào phòng ${res.roomCode}!`, false, 'system');
         document.getElementById('start-screen-modal')?.classList.add('hidden');
         document.getElementById('chat-and-emotes-wrapper')?.classList.remove('hidden');
         if (scene3d) scene3d.setMyPlayerId(myPlayerId);
         applyDeviceControlsVisibility();
       } else {
-        alert(res.message);
+        // Yêu cầu 3.2: Hiện chữ màu đỏ thông báo 'Phòng không tồn tại' nằm bên dưới thanh nhập ID
+        if (errorMsgEl) {
+          errorMsgEl.innerText = res.message || 'Phòng không tồn tại';
+          errorMsgEl.classList.remove('hidden');
+        } else {
+          showToast(res.message);
+        }
       }
     });
+  });
+
+  // Tự động ẩn thông báo lỗi khi người dùng gõ mã phòng & Hỗ trợ phím Enter (Yêu cầu 3.2)
+  const roomCodeInput = document.getElementById('input-room-code');
+  if (roomCodeInput) {
+    roomCodeInput.addEventListener('input', () => {
+      document.getElementById('join-room-error-msg')?.classList.add('hidden');
+    });
+    roomCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-join-room')?.click();
+      }
+    });
+  }
+
+  // Hỗ trợ phím Enter cho ô nhập tên ban đầu
+  document.getElementById('input-player-name')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('input-room-code')?.focus();
+    }
   });
 
   // 2B. Sao chép link mạng LAN / Wi-Fi máy chủ (Yêu cầu 1.8)
@@ -1685,13 +1719,20 @@ function bindUIEvents() {
     settingsModal?.classList.add('hidden');
   });
 
-  // Đổi tên từ cài đặt
+  // Đổi tên từ cài đặt (Yêu cầu 3.2: Hỗ trợ nhấn Enter)
   document.getElementById('btn-save-settings-name')?.addEventListener('click', () => {
     const newName = settingsNameInput?.value.trim();
     if (newName) {
       socket.emit('update_customization', { name: newName });
       showToast(`Đã đổi tên thành: "${newName}"!`);
       settingsModal?.classList.add('hidden');
+    }
+  });
+
+  settingsNameInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('btn-save-settings-name')?.click();
     }
   });
 
@@ -1705,12 +1746,27 @@ function bindUIEvents() {
     showToast(isMuted ? 'Đã tắt âm thanh 🔇' : 'Đã bật âm thanh 🔊');
   });
 
-  // Rời phòng thi
+  // Rời phòng thi (Yêu cầu 3.2: UI cửa sổ xác nhận chuyên nghiệp thay vì confirm của trình duyệt)
+  const leaveConfirmModal = document.getElementById('leave-confirm-modal');
+
   document.getElementById('btn-leave-room')?.addEventListener('click', () => {
-    if (confirm('Bạn có chắc chắn muốn rời khỏi phòng thi?')) {
+    if (leaveConfirmModal) {
+      leaveConfirmModal.classList.remove('hidden');
+    } else if (confirm('Bạn có chắc chắn muốn rời khỏi phòng thi?')) {
       if (socket) socket.disconnect();
       window.location.reload();
     }
+    if (window.audioMgr) window.audioMgr.playClick();
+  });
+
+  document.getElementById('btn-cancel-leave-modal')?.addEventListener('click', () => {
+    leaveConfirmModal?.classList.add('hidden');
+    if (window.audioMgr) window.audioMgr.playClick();
+  });
+
+  document.getElementById('btn-confirm-leave-modal')?.addEventListener('click', () => {
+    if (socket) socket.disconnect();
+    window.location.reload();
   });
 
   // 13. Nút Đổi Góc Nhìn Camera (Camera Presets Cycler)

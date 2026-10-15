@@ -264,22 +264,34 @@ class StudentCharacter {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Nền tag mờ sang trọng, thanh mảnh
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    const displayName = (name || this.name || 'Sĩ Tử').trim();
+
+    // 1. Đo độ dài tên để tự động co dãn khung thẻ vừa vặn (Yêu cầu 3.2)
+    ctx.font = 'bold 36px "Segoe UI", Tahoma, sans-serif';
+    const textWidth = ctx.measureText(displayName).width;
+
+    // Chiều rộng khung thẻ co dãn theo độ dài tên với padding hai bên 26px
+    const boxWidth = Math.max(100, Math.min(w - 20, textWidth + 56));
+    const boxHeight = 58;
+    const boxX = (w - boxWidth) / 2;
+    const boxY = (h - boxHeight) / 2;
+    const radius = 18;
+
+    // 2. Nền tag mờ sang trọng, thanh mảnh co dãn tự động
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = '#facc15';
-    ctx.lineWidth = 4;
-    this._roundRect(ctx, 24, 28, w - 48, h - 56, 24);
+    ctx.lineWidth = 3.5;
+    this._roundRect(ctx, boxX, boxY, boxWidth, boxHeight, radius);
     ctx.fill();
     ctx.stroke();
 
-    // Tên thí sinh (Căn giữa hoàn hảo, không còn hiển thị điểm số - Yêu cầu 2.1)
+    // 3. Tên thí sinh (Căn giữa hoàn hảo trong khung thẻ co dãn)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 38px "Segoe UI", Tahoma, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
     ctx.shadowBlur = 6;
-    ctx.fillText(name || this.name, w / 2, h / 2);
+    ctx.fillText(displayName, w / 2, h / 2 + 1);
 
     this.hudTexture.needsUpdate = true;
   }
